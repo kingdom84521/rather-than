@@ -134,12 +134,27 @@ Mode D 與 E 永遠不會由模型自行判斷啟動，在你下令之前，連�
 沒有它會退回純 stdout，功能一樣但會出現在對話記錄裡）。
 Mode E 另外需要 `glab` 或 `gh` 才能挖審閱討論。
 
+### 1. Skill
+
+```bash
+npx skills add kingdom84521/rather-than -g
+```
+
+`-g` 不是可選的。它會裝到 `~/.claude/skills/rather-than/`，那正是 hook 解析 skill script 的路徑；
+預設的專案範圍（`./.claude/skills/`）會把它放在 hook 不會去看的地方。
+整包都會跟著過去 —— `references/`、`scripts/`、`evals/` —— script 的執行位元也保留。
+
+### 2. Hooks
+
+[skills CLI](https://skills.sh) 只裝 skill，不裝 hook，所以這一半是手動的 ——
+而且少了它 rather-than 什麼都不會做。建立 store、開每個 session 的 journal、
+每個 turn 注入索引、在段落處停下來整併，全都是 hook 在做。
+skill 自己只是一份沒人會去打開的文件。
+
 ```bash
 git clone https://github.com/kingdom84521/rather-than.git
-cd rather-than
-cp -R skills/rather-than "$HOME/.claude/skills/"
-cp -R hooks/rather-than "$HOME/.claude/hooks/"
-chmod +x "$HOME/.claude/hooks/rather-than/"*.sh "$HOME/.claude/skills/rather-than/scripts/"*.sh
+cp -R rather-than/hooks/rather-than "$HOME/.claude/hooks/"
+chmod +x "$HOME/.claude/hooks/rather-than/"*.sh
 ```
 
 接著把三個 hook 註冊進 `~/.claude/settings.json` —— 沒有 `hooks` 這個 key 就補上，
@@ -163,14 +178,18 @@ chmod +x "$HOME/.claude/hooks/rather-than/"*.sh "$HOME/.claude/skills/rather-tha
 
 用 shell 形式是刻意的：exec 形式（`args`）不經過 shell，`$HOME` 不會展開。
 
+### 3. 驗證
+
 開一個新 session 後用 `/hooks` 確認 —— 三個都應該出現在各自的事件下，來源是 `User`。
 其他什麼都不用建，store 與它的狀態目錄會在第一次執行時出現。
 
 要從頭驗一次行為，講一個沒有技術理由的風格要求（「這邊一律用 `for…of`，不要 `forEach`」）。
 表面上應該什麼都不會發生 —— 它被靜默記下，問題會在下一個段落批次送到你面前。
 
-更新就是 `git pull` 加上同樣那兩行 `cp -R`。它們只覆蓋 skill 與 hook 的檔案，
-不會動到 `.state/` 與你的 store。
+### 更新
+
+`npx skills update rather-than` 會更新 skill；hook 要再跑一次那行 `cp -R`。
+你的 store 兩者都不會動到 —— 它在這兩個目錄之外。
 
 ## 附註
 

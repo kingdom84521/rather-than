@@ -148,12 +148,28 @@ Requirements: Claude Code, `bash`, and `jq` (recommended — with it the hooks i
 context silently; without it they fall back to plain stdout, which works but shows up in
 the transcript). Mode E additionally needs `glab` or `gh` to mine review discussions.
 
+### 1. The skill
+
+```bash
+npx skills add kingdom84521/rather-than -g
+```
+
+`-g` is not optional here. It installs to `~/.claude/skills/rather-than/`, which is the
+path the hooks resolve the skill's scripts from; the default project scope
+(`./.claude/skills/`) puts them where the hooks do not look. The whole bundle travels —
+`references/`, `scripts/`, `evals/` — and the scripts keep their executable bit.
+
+### 2. The hooks
+
+The [skills CLI](https://skills.sh) installs skills, not hooks, so this half is manual —
+and rather-than does nothing without it. The hooks are what create the store, open each
+session's journal, inject the index every turn, and stop at a break point for
+consolidation. The skill on its own is a document nobody opens.
+
 ```bash
 git clone https://github.com/kingdom84521/rather-than.git
-cd rather-than
-cp -R skills/rather-than "$HOME/.claude/skills/"
-cp -R hooks/rather-than "$HOME/.claude/hooks/"
-chmod +x "$HOME/.claude/hooks/rather-than/"*.sh "$HOME/.claude/skills/rather-than/scripts/"*.sh
+cp -R rather-than/hooks/rather-than "$HOME/.claude/hooks/"
+chmod +x "$HOME/.claude/hooks/rather-than/"*.sh
 ```
 
 Then register the three hooks in `~/.claude/settings.json` — add the `hooks` key if it is
@@ -178,6 +194,8 @@ absent, and do not replace entries you already have:
 The shell form is deliberate: the exec form (`args`) skips the shell, so `$HOME` would
 not expand.
 
+### 3. Verify
+
 Start a new session and check `/hooks` — all three should appear under their events with
 source `User`. Nothing else needs creating; the store and its state directories appear on
 first run.
@@ -186,8 +204,10 @@ To verify the behavior end to end, state a style demand with no technical reason
 ("always use `for…of` here instead of `forEach`"). Nothing should happen visibly — it is
 recorded silently, and the question arrives batched at the next break point.
 
-Updating is `git pull` plus the same two `cp -R` commands. They overwrite the skill and
-hook files and leave `.state/` and your store untouched.
+### Updating
+
+`npx skills update rather-than` refreshes the skill; the hooks need their `cp -R` run
+again. Your store is never touched by either — it lives outside both directories.
 
 ## Notes
 
