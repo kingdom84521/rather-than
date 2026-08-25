@@ -83,7 +83,7 @@ for brevity.
 
 ## Calibration (from elicitation.log)
 
-Aggregate `~/.claude/rather-than/.state/elicitation.log` per
+Aggregate `<store>/.state/elicitation.log` per
 origin. For any origin with ≥10 samples and acceptance rate
 (personal+team over total) below 30%, propose a tightening in the batch
 question (e.g. "S5 acceptance is 2/11 — require a second occurrence

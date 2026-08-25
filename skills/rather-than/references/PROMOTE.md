@@ -126,7 +126,8 @@ final authority there.
 
 ## Step 5 — after promotion
 
-- Prose rules: append to `~/.claude/CLAUDE.md` (personal) or the repo
+- Prose rules: append to the agent's own user-level instruction file
+  (`~/.claude/CLAUDE.md`, `~/.codex/AGENTS.md`, whichever the agent reads) or the repo
   CLAUDE.md (team, via the proposed change).
 - Delete the promoted source entries and rebuild the index. The rule now
   lives where rules live; the tendency store does not keep tombstones.

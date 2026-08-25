@@ -212,7 +212,7 @@ The question text quotes the source raw lines:
 
 ### Defer
 
-A deferred candidate is written to `~/.claude/rather-than/deferred/<slug>.md`
+A deferred candidate is written to `<store>/deferred/<slug>.md`
 with its complete analysis and source quotes — nothing is re-derived later:
 
 ```markdown

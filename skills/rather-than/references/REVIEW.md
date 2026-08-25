@@ -8,7 +8,7 @@ attention.
 
 ## The translation file
 
-Overwrite `~/.claude/rather-than/REVIEW.md` with the current entry's
+Overwrite `<store>/REVIEW.md` with the current entry's
 translation (one entry per file, always). Header:
 
 ```markdown

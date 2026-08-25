@@ -2,10 +2,12 @@
 
 [English](README.md) | 繁體中文
 
-一個 [Claude Code](https://claude.com/claude-code) plugin —— 一個 skill 加三個 hook ——
-用來記錄你「為什麼」把程式寫成這個樣子，讓後面的 session 不必重新爭論已經定案的事。
+一個 agent plugin —— 一個 skill 加三個 hook —— 用來記錄你「為什麼」把程式寫成這個樣子，
+讓後面的 session 不必重新爭論已經定案的事。它跑在
+[Claude Code](https://claude.com/claude-code) 與 [Codex](https://developers.openai.com/codex) 上
+（兩者的 hook 契約相同），而且同一份 store 服務你所有用到的 agent。
 
-規則的家是 `CLAUDE.md`。但真正讓一份程式碼像是你寫的東西，多半比規則更軟 ——
+規則的家是 agent 的指示檔 —— `CLAUDE.md`、`AGENTS.md`。但真正讓一份程式碼像是你寫的東西，多半比規則更軟 ——
 「泛型寧可寫明，不要靠推導」、「防護寧可讓型別系統擋住，不要靠慣例加一行註解」。
 這種話在某個 session 講過，就隨那個 session 一起消失。rather-than 從日常對話裡把它們接住，
 每一筆都附上收據、經你確認之後才存起來，再把整份 store 注回每一個 turn。
@@ -13,6 +15,17 @@
 條目是**傾向，不是規則**：警告等級的偏向，永遠不阻擋、不說教，遇到正確性、當下的可讀性、
 或條目自己記下的例外就讓路。要把一個傾向變成真正會強制執行的規則，是另一條獨立、設有關卡、
 且只能由你下令啟動的路。
+
+## 支援的 agent
+
+| Agent | Skill | 自動捕捉與注入 |
+|---|---|---|
+| Claude Code | 有 | 有 —— `SessionStart`、`UserPromptSubmit`、`Stop` |
+| Codex | 有 | 有 —— 同樣三個事件、同樣的 `hookSpecificOutput.additionalContext` 與 `decision: block` 契約 |
+| Cursor | 有 | 部分，且未附 adapter —— `sessionStart` 收 `additional_context`，但 `beforeSubmitPrompt` 只回 `continue`／`user_message`，每個 turn 的提醒沒有地方放 |
+| 其他支援 Agent Skills 的 agent | 有 | 沒有 —— 能讀能套用 store，但沒有東西會自動捕捉或更新 |
+
+store 與判斷邏輯本來就與 agent 無關；只有自動化那層需要 hook，而 hook 正是多數 agent 還沒有的東西。
 
 ## 運作方式
 
@@ -42,9 +55,12 @@
 └── team/<repo-key>/      # team scope 的本機暫存區，依 repository 分開
 ```
 
-執行狀態 —— 鎖、使用次數、每個 session 的簿記 —— 放在
-`~/.claude/rather-than/.state/`，在所有 root 之外，也在 plugin 或 CLI 更新會管的目錄之外，
-所以更新帶不走它。
+store 的根目錄是解析出來的，不是寫死的：有設 `$RATHER_THAN_HOME` 就用它，否則用既有的
+`~/.claude/rather-than`（所以什麼都不必搬），再否則用 `${XDG_DATA_HOME:-~/.local/share}/rather-than`。
+它不在任何單一 agent 的設定目錄裡，也不在 plugin 或 CLI 更新會管的目錄裡 —— 執行狀態
+（鎖、使用次數、每個 session 的簿記）放在 `<store>/.state/` 而不是裝好的 plugin 目錄裡，
+正是同一個理由：那個目錄的路徑釘在 commit 上，每次更新就換一個。
+team 暫存區是以 repo 為鍵，所以同一個 checkout 底下換 agent，跟著你的還是同一份 store。
 
 ## 流程
 
@@ -79,9 +95,9 @@
 
 | Scope | 根目錄 | 進 git |
 |---|---|---|
-| personal | `~/.claude/rather-than/` | 否 |
-| team（暫存） | `~/.claude/rather-than/team/<repo-key>/` | 否 |
-| project（已發佈） | `<repo>/.claude/rather-than/` | 是 |
+| personal | `<store>/` | 否 |
+| team（暫存） | `<store>/team/<repo-key>/` | 否 |
+| project（已發佈） | `<repo>/.rather-than/`（舊的 `<repo>/.claude/rather-than/` 仍然認） | 是 |
 
 被歸類為 team 的條目先落在本機暫存區，只有你明確發佈才會進 repository ——
 這讓還在實驗的慣例不會擠進別人的 context。已發佈的條目跟其他條目一樣會被讀取與套用；
@@ -139,10 +155,16 @@ Mode E 另外需要 `glab` 或 `gh` 才能挖審閱討論。
 npx plugins add kingdom84521/rather-than
 ```
 
-安裝就這樣結束。這個 repo 是一個 [open-plugin](https://www.npmjs.com/package/plugins) 套件，
-一道指令就把 skill 與三個 hook 都帶進來，而且 hook 由 agent 自己的 plugin 系統註冊 ——
-不用改 `settings.json`，也沒有東西要複製。想先看會裝什麼，跑
+安裝就這樣結束，而且是對 CLI 偵測到的每一個 agent 都裝。這個 repo 是一個
+[open-plugin](https://www.npmjs.com/package/plugins) 套件，一道指令就把 skill 與三個 hook
+都帶進來，由各 agent 自己的 plugin 系統註冊 —— 不用改 `settings.json` 或 `config.toml`，
+也沒有東西要複製。想先看會裝什麼，跑
 `npx plugins discover kingdom84521/rather-than`，它應該回報 `rather-than  1 skill, hooks`。
+只想裝一家就加 `-t claude-code` 或 `-t codex`。
+
+CLI 會為每個 target 準備各自的副本 —— Claude Code 是 `~/.claude/plugins/cache/…`，
+Codex 是 `~/.codex/plugins/cache/…` 再加一筆 `config.toml` —— 並把 `hooks/hooks.json` 裡的
+plugin root 變數改寫成那家 agent 實際會設的那一個。
 
 ### 不用 plugin CLI 的話
 
@@ -158,9 +180,9 @@ cp -R rather-than/hooks/rather-than "$HOME/.claude/hooks/"
 chmod +x "$HOME/.claude/hooks/rather-than/"*.sh
 ```
 
-那條路上 `-g` 不是可選的：它會把 skill 裝到 `~/.claude/skills/rather-than/`，
-那正是沒有 plugin root 時 hook 會去找的地方；預設的專案範圍（`./.claude/skills/`）
-會把它放在 hook 不會去看的位置。
+那條路上 `-g` 不是可選的：它會把 skill 裝到使用者層級的 skills 目錄，那正是沒有 plugin root
+時 hook 會去找的地方 —— 它會依序試 `~/.claude/skills`、`~/.agents/skills`、`~/.codex/skills`。
+預設的專案範圍（`./.claude/skills/`）會把它放在 hook 不會去看的位置。
 
 接著把三個 hook 註冊進 `~/.claude/settings.json` —— 沒有 `hooks` 這個 key 就補上，
 並且不要覆蓋你原有的項目：
@@ -235,6 +257,9 @@ store 是 Markdown，讀不讀、怎麼讀，全憑模型自己斟酌，沒有�
   沒有任何東西在強制這件事，實際上模型是靠注入的單行索引在做事、跳過檔案 ——
   於是 `Except` 子句，也就是防止一個傾向誤觸的關鍵部分，成了整份 store 最少被讀到的地方。
   usage log 也量不到這件事：它記的是 applied／excepted／overridden，不是檔案有沒有被打開。
+- **Codex 這半邊是對著契約驗的，不是對著跑起來的 Codex 驗的。** 它文件上的 hook 事件、
+  stdin 欄位與輸出格式跟 Claude Code 一致，hook 也已對著那份契約端到端跑過 ——
+  但請在裝有 Codex CLI 的機器上跑一次 `npx plugins discover` 與一場真的 session 再信它。
 - **讀 store 沒有工具，而且很吃 context。** 沒有查詢能力 —— 沒有「給我這個分類的條目」，
   也沒有欄位投影。讀一筆條目就是 `cat` 整個檔，所以查個幾筆就會在
   frontmatter 與當下任務不需要的敘述上燒掉大量 context。這個成本又餵養了上一點：

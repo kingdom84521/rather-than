@@ -2,11 +2,13 @@
 
 English | [繁體中文](README.zh-TW.md)
 
-A [Claude Code](https://claude.com/claude-code) plugin — one skill and three hooks —
-that records *why* you write code a particular way, so later sessions do not re-litigate
-settled decisions.
+An agent plugin — one skill and three hooks — that records *why* you write code a
+particular way, so later sessions do not re-litigate settled decisions. It runs on
+[Claude Code](https://claude.com/claude-code) and [Codex](https://developers.openai.com/codex),
+which share the same hook contract, and one store serves every agent you drive.
 
-`CLAUDE.md` is where rules live. But most of what makes a codebase feel like yours is
+Your agent's instruction file — `CLAUDE.md`, `AGENTS.md` — is where rules live. But most
+of what makes a codebase feel like yours is
 softer than a rule — "prefer an explicit generic rather than an inferred one", "prefer a
 guard the type system enforces rather than a convention plus a comment". State one of
 those in a session and it dies with the session. rather-than captures them from ordinary
@@ -17,6 +19,18 @@ Entries are **tendencies, not rules**: warning-level leanings that never block, 
 lecture, and yield to correctness, to local readability, and to their own recorded
 exceptions. Turning a tendency into an actually-enforced rule is a separate, gated,
 command-only step.
+
+## Supported agents
+
+| Agent | Skill | Automatic capture and injection |
+|---|---|---|
+| Claude Code | yes | yes — `SessionStart`, `UserPromptSubmit`, `Stop` |
+| Codex | yes | yes — the same three events, the same `hookSpecificOutput.additionalContext` and `decision: block` contract |
+| Cursor | yes | partial, no adapter shipped — `sessionStart` accepts `additional_context`, but `beforeSubmitPrompt` returns only `continue`/`user_message`, so the per-turn reminder has nowhere to go |
+| Any other skills-compatible agent | yes | no — it can read and apply the store, but nothing captures or refreshes on its own |
+
+The store and the judgment are agent-independent; only the automation needs hooks, and
+hooks are what most agents still lack.
 
 ## How it works
 
@@ -47,9 +61,14 @@ merge.
 └── team/<repo-key>/      # team-scope staging, per repository
 ```
 
-Execution state — locks, usage counts, per-session bookkeeping — lives under
-`~/.claude/rather-than/.state/`, outside every root and outside the directories a
-plugin or CLI update manages, so an update cannot carry it off.
+The store root is resolved, not hardcoded: `$RATHER_THAN_HOME` when you set it, else an
+existing `~/.claude/rather-than` (so nothing has to move), else
+`${XDG_DATA_HOME:-~/.local/share}/rather-than`. It sits outside any single agent's config
+directory, and outside the directories a plugin or CLI update manages — which is also why
+execution state (locks, usage counts, per-session bookkeeping) lives in `<store>/.state/`
+rather than inside the installed plugin, whose path is pinned to a commit and replaced on
+every update. Team staging keys off the repo, so the same store follows you across agents
+in the same checkout.
 
 ## The pipeline
 
@@ -90,9 +109,9 @@ for any of the bookkeeping above.
 
 | Scope | Root | In git |
 |---|---|---|
-| personal | `~/.claude/rather-than/` | no |
-| team (staging) | `~/.claude/rather-than/team/<repo-key>/` | no |
-| project (published) | `<repo>/.claude/rather-than/` | yes |
+| personal | `<store>/` | no |
+| team (staging) | `<store>/team/<repo-key>/` | no |
+| project (published) | `<repo>/.rather-than/` (legacy `<repo>/.claude/rather-than/` still honored) | yes |
 
 Team-classified entries land in local staging first and reach the repository only when you
 explicitly publish them, which keeps experimental conventions out of everyone else's
@@ -153,11 +172,17 @@ the transcript). Mode E additionally needs `glab` or `gh` to mine review discuss
 npx plugins add kingdom84521/rather-than
 ```
 
-That is the whole install. This repo is an [open-plugin](https://www.npmjs.com/package/plugins)
-package, so one command brings the skill and all three hooks, and the hooks are registered
-by the agent's own plugin system — no `settings.json` editing, nothing to copy. Run
+That is the whole install, for every agent the CLI detects. This repo is an
+[open-plugin](https://www.npmjs.com/package/plugins) package, so one command brings the
+skill and all three hooks, and each agent's own plugin system registers them — no
+`settings.json` or `config.toml` editing, nothing to copy. Run
 `npx plugins discover kingdom84521/rather-than` first to see what it would install: it
-should report `rather-than  1 skill, hooks`.
+should report `rather-than  1 skill, hooks`. Add `-t claude-code` or `-t codex` to install
+to one agent only.
+
+The CLI stages a per-vendor copy for each target — `~/.claude/plugins/cache/…` for Claude
+Code, `~/.codex/plugins/cache/…` plus a `config.toml` entry for Codex — and rewrites the
+plugin-root variable in `hooks/hooks.json` to whichever one that agent sets.
 
 ### Without the plugin CLI
 
@@ -174,8 +199,9 @@ cp -R rather-than/hooks/rather-than "$HOME/.claude/hooks/"
 chmod +x "$HOME/.claude/hooks/rather-than/"*.sh
 ```
 
-`-g` is not optional there: it installs the skill to `~/.claude/skills/rather-than/`,
-which is where the hooks look when no plugin root is set. The default project scope
+`-g` is not optional there: it installs the skill to a user-level skills directory, which
+is where the hooks look when no plugin root is set — they try `~/.claude/skills`,
+`~/.agents/skills` and `~/.codex/skills` in turn. The default project scope
 (`./.claude/skills/`) puts it where they do not look.
 
 Then register the three hooks in `~/.claude/settings.json` — add the `hooks` key if it is
@@ -261,6 +287,10 @@ read at a model's discretion, and nothing enforces how it gets read.
   keeps a tendency from misfiring, are the least-read part of the store. The usage log
   cannot measure this either: it records applied / excepted / overridden, not whether a
   file was opened.
+- **The Codex half is verified against the contract, not against a live Codex.** Its
+  documented hook events, stdin fields and output schema match Claude Code's, and the
+  hooks were exercised end to end against that contract — but on a machine with the Codex
+  CLI installed, run `npx plugins discover` and one real session before trusting it.
 - **Reading the store has no tooling and costs a lot of context.** There is no query — no
   "give me this category's entries", no field projection. Reading one entry means `cat`ing
   the whole file, so consulting a handful burns a large amount of context on frontmatter

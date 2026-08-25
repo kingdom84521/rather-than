@@ -15,9 +15,16 @@ Two scopes. The classification question decides which one an entry lands in.
 
 | Scope | Root | Committed to git |
 |---|---|---|
-| personal | `~/.claude/rather-than/` | no |
-| team (local staging) | `~/.claude/rather-than/team/<repo-key>/` | no |
-| project (published) | `<repo>/.claude/rather-than/` | yes (gitignore `index.md`) |
+| personal | `<store>/` | no |
+| team (local staging) | `<store>/team/<repo-key>/` | no |
+| project (published) | `<repo>/.rather-than/` | yes (gitignore `index.md`) |
+
+`<store>` is the personal store root, resolved as `$RATHER_THAN_HOME` when set, else an
+existing `~/.claude/rather-than`, else `${XDG_DATA_HOME:-~/.local/share}/rather-than`. The
+published root is `<repo>/.rather-than/`, except in a repo that already carries the legacy
+`<repo>/.claude/rather-than/`. Both are agent-independent: the same store serves every
+agent you drive. The injected session context states every resolved path — use those, never
+derive them.
 
 `<repo-key>` is derived from the repo (git-root directory name plus a short
 path hash); the injected session context states the resolved path — use that,
@@ -42,7 +49,7 @@ Each root contains:
 - `ignore.md` — topics the user has opted out of.
 
 Execution state — hook bookkeeping, per-root usage logs, the consolidation lock —
-lives in one place outside the roots, at `~/.claude/rather-than/.state/`, so an
+lives in one place outside the roots, at `<store>/.state/`, so an
 agent or plugin update cannot take it with it. The injected session context names
 every state dir; use those paths.
 
@@ -291,7 +298,7 @@ Append never-track topics to `ignore.md` as
 `- <slug>: <one-sentence scope description>`.
 
 Then log every answer — including skips — to
-`~/.claude/rather-than/.state/elicitation.log`, one line each:
+`<store>/.state/elicitation.log`, one line each:
 
 ```
 <YYYY-MM-DD> <origin> <slug> <personal|team|defer|never>
@@ -328,7 +335,7 @@ including on failure.
 ### B2. Read
 
 Journals live only in the personal root. Read every
-`~/.claude/rather-than/journal/*.md` and the `prefer/` files their blocks
+`<store>/journal/*.md` and the `prefer/` files their blocks
 reference. Each journal's provenance header names the team staging root
 its team-scope blocks belong to — route by that header, never by the
 current session's repo (an orphan journal may come from a different
@@ -347,7 +354,7 @@ repo).
 ### Review gate — one entry at a time, before every `prefer/` write
 
 Nothing is written to `prefer/` unconfirmed. For each pending change:
-translate it into `~/.claude/rather-than/REVIEW.md` (overwriting — the
+translate it into `<store>/REVIEW.md` (overwriting — the
 file always holds exactly one entry), get one confirmation (寫入 / 需要
 修改 / 暫緩 / 取消 review), write on approval, then move to the next.
 Format and elaboration discipline in `references/REVIEW.md`: gist-first
@@ -382,7 +389,7 @@ preference.
 **Review** (user asks to review preferences) → list all entries from the
 injected index, numbered and grouped by category, in chat (a plain list —
 AskUserQuestion cannot hold a whole store). The user names one; translate
-that single entry into `~/.claude/rather-than/REVIEW.md` per
+that single entry into `<store>/REVIEW.md` per
 `references/REVIEW.md` — read-only, no writes. Edits or deletions happen
 only if the user then asks.
 
