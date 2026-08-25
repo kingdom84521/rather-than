@@ -22,7 +22,7 @@ command-only step.
 
 Three parts.
 
-**Hooks** — pure file IO, no LLM calls, all under `~/.claude/hooks/rather-than/`:
+**Hooks** — pure file IO, no LLM calls:
 
 | Hook | Event | What it does |
 |---|---|---|
@@ -48,7 +48,8 @@ merge.
 ```
 
 Execution state — locks, usage counts, per-session bookkeeping — lives under
-`~/.claude/skills/rather-than/.state/`, never in the store and never in a repository.
+`~/.claude/rather-than/.state/`, outside every root and outside the directories a
+plugin or CLI update manages, so an update cannot carry it off.
 
 ## The pipeline
 
@@ -148,29 +149,34 @@ Requirements: Claude Code, `bash`, and `jq` (recommended — with it the hooks i
 context silently; without it they fall back to plain stdout, which works but shows up in
 the transcript). Mode E additionally needs `glab` or `gh` to mine review discussions.
 
-### 1. The skill
+```bash
+npx plugins add kingdom84521/rather-than
+```
+
+That is the whole install. This repo is an [open-plugin](https://www.npmjs.com/package/plugins)
+package, so one command brings the skill and all three hooks, and the hooks are registered
+by the agent's own plugin system — no `settings.json` editing, nothing to copy. Run
+`npx plugins discover kingdom84521/rather-than` first to see what it would install: it
+should report `rather-than  1 skill, hooks`.
+
+### Without the plugin CLI
+
+The [skills CLI](https://skills.sh) installs skills and nothing else — it carries no hook
+support at all — so on that route the hooks are yours to place, and rather-than does
+nothing until they are. The hooks are what create the store, open each session's journal,
+inject the index every turn, and stop at a break point for consolidation; the skill on its
+own is a document nobody opens.
 
 ```bash
 npx skills add kingdom84521/rather-than -g
-```
-
-`-g` is not optional here. It installs to `~/.claude/skills/rather-than/`, which is the
-path the hooks resolve the skill's scripts from; the default project scope
-(`./.claude/skills/`) puts them where the hooks do not look. The whole bundle travels —
-`references/`, `scripts/`, `evals/` — and the scripts keep their executable bit.
-
-### 2. The hooks
-
-The [skills CLI](https://skills.sh) installs skills, not hooks, so this half is manual —
-and rather-than does nothing without it. The hooks are what create the store, open each
-session's journal, inject the index every turn, and stop at a break point for
-consolidation. The skill on its own is a document nobody opens.
-
-```bash
 git clone https://github.com/kingdom84521/rather-than.git
 cp -R rather-than/hooks/rather-than "$HOME/.claude/hooks/"
 chmod +x "$HOME/.claude/hooks/rather-than/"*.sh
 ```
+
+`-g` is not optional there: it installs the skill to `~/.claude/skills/rather-than/`,
+which is where the hooks look when no plugin root is set. The default project scope
+(`./.claude/skills/`) puts it where they do not look.
 
 Then register the three hooks in `~/.claude/settings.json` — add the `hooks` key if it is
 absent, and do not replace entries you already have:
@@ -194,11 +200,11 @@ absent, and do not replace entries you already have:
 The shell form is deliberate: the exec form (`args`) skips the shell, so `$HOME` would
 not expand.
 
-### 3. Verify
+### Verify
 
-Start a new session and check `/hooks` — all three should appear under their events with
-source `User`. Nothing else needs creating; the store and its state directories appear on
-first run.
+Start a new session and check `/hooks` — all three should appear under their events,
+attributed to the plugin on the plugin route and to `User` on the manual one. Nothing else
+needs creating; the store and its state directories appear on first run.
 
 To verify the behavior end to end, state a style demand with no technical reason
 ("always use `for…of` here instead of `forEach`"). Nothing should happen visibly — it is
@@ -206,8 +212,11 @@ recorded silently, and the question arrives batched at the next break point.
 
 ### Updating
 
-`npx skills update rather-than` refreshes the skill; the hooks need their `cp -R` run
-again. Your store is never touched by either — it lives outside both directories.
+Run the install command again — the plugin CLI shallow-clones the repo to
+`~/.cache/plugins/<slug>` and installs over the previous copy. On the manual route,
+`npx skills update rather-than` refreshes the skill and the hooks need their `cp -R` run
+again. Your store and its `.state/` sit in `~/.claude/rather-than/`, which no route
+touches.
 
 ## Notes
 
@@ -221,6 +230,12 @@ again. Your store is never touched by either — it lives outside both directori
   per the hooks reference guidance on prompt-injection defense.
 - `index.md` is derived. Rebuild it with `skills/rather-than/scripts/rebuild-index.sh <root>`;
   never hand-edit it.
+- The repo doubles as an open-plugin package: `.plugin/plugin.json` declares
+  `hooks/hooks.json`, whose commands use `${PLUGIN_ROOT}` — the plugin CLI rewrites that
+  to each agent's own variable (`CLAUDE_PLUGIN_ROOT` and friends) as it installs, and it
+  rewrites config files only, never scripts. The hook scripts therefore read either
+  variable themselves and fall back to `~/.claude/skills/rather-than` when neither is set,
+  which is what keeps the manual route working.
 - Contested conflicts (Mode B) and promotion gate 5 (Mode D) hand off to a separate
   `multi-debate` skill. It is not bundled here; without it those two paths need the debate
   run by hand.

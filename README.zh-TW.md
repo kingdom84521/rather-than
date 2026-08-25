@@ -18,7 +18,7 @@
 
 三個部分。
 
-**Hooks** —— 純檔案 IO、不呼叫 LLM，全部放在 `~/.claude/hooks/rather-than/`：
+**Hooks** —— 純檔案 IO、不呼叫 LLM：
 
 | Hook | 事件 | 做什麼 |
 |---|---|---|
@@ -43,7 +43,8 @@
 ```
 
 執行狀態 —— 鎖、使用次數、每個 session 的簿記 —— 放在
-`~/.claude/skills/rather-than/.state/`，不會進 store，也不會進任何 repository。
+`~/.claude/rather-than/.state/`，在所有 root 之外，也在 plugin 或 CLI 更新會管的目錄之外，
+所以更新帶不走它。
 
 ## 流程
 
@@ -134,28 +135,32 @@ Mode D 與 E 永遠不會由模型自行判斷啟動，在你下令之前，連�
 沒有它會退回純 stdout，功能一樣但會出現在對話記錄裡）。
 Mode E 另外需要 `glab` 或 `gh` 才能挖審閱討論。
 
-### 1. Skill
-
 ```bash
-npx skills add kingdom84521/rather-than -g
+npx plugins add kingdom84521/rather-than
 ```
 
-`-g` 不是可選的。它會裝到 `~/.claude/skills/rather-than/`，那正是 hook 解析 skill script 的路徑；
-預設的專案範圍（`./.claude/skills/`）會把它放在 hook 不會去看的地方。
-整包都會跟著過去 —— `references/`、`scripts/`、`evals/` —— script 的執行位元也保留。
+安裝就這樣結束。這個 repo 是一個 [open-plugin](https://www.npmjs.com/package/plugins) 套件，
+一道指令就把 skill 與三個 hook 都帶進來，而且 hook 由 agent 自己的 plugin 系統註冊 ——
+不用改 `settings.json`，也沒有東西要複製。想先看會裝什麼，跑
+`npx plugins discover kingdom84521/rather-than`，它應該回報 `rather-than  1 skill, hooks`。
 
-### 2. Hooks
+### 不用 plugin CLI 的話
 
-[skills CLI](https://skills.sh) 只裝 skill，不裝 hook，所以這一半是手動的 ——
-而且少了它 rather-than 什麼都不會做。建立 store、開每個 session 的 journal、
-每個 turn 注入索引、在段落處停下來整併，全都是 hook 在做。
+[skills CLI](https://skills.sh) 只裝 skill，別的都不裝 —— 它完全沒有 hook 的支援 ——
+所以走這條路 hook 要你自己擺，擺好之前 rather-than 什麼都不會做。
+建立 store、開每個 session 的 journal、每個 turn 注入索引、在段落處停下來整併，全都是 hook 在做；
 skill 自己只是一份沒人會去打開的文件。
 
 ```bash
+npx skills add kingdom84521/rather-than -g
 git clone https://github.com/kingdom84521/rather-than.git
 cp -R rather-than/hooks/rather-than "$HOME/.claude/hooks/"
 chmod +x "$HOME/.claude/hooks/rather-than/"*.sh
 ```
+
+那條路上 `-g` 不是可選的：它會把 skill 裝到 `~/.claude/skills/rather-than/`，
+那正是沒有 plugin root 時 hook 會去找的地方；預設的專案範圍（`./.claude/skills/`）
+會把它放在 hook 不會去看的位置。
 
 接著把三個 hook 註冊進 `~/.claude/settings.json` —— 沒有 `hooks` 這個 key 就補上，
 並且不要覆蓋你原有的項目：
@@ -178,9 +183,10 @@ chmod +x "$HOME/.claude/hooks/rather-than/"*.sh
 
 用 shell 形式是刻意的：exec 形式（`args`）不經過 shell，`$HOME` 不會展開。
 
-### 3. 驗證
+### 驗證
 
-開一個新 session 後用 `/hooks` 確認 —— 三個都應該出現在各自的事件下，來源是 `User`。
+開一個新 session 後用 `/hooks` 確認 —— 三個都應該出現在各自的事件下；走 plugin 這條路
+來源會標成那個 plugin，走手動那條則是 `User`。
 其他什麼都不用建，store 與它的狀態目錄會在第一次執行時出現。
 
 要從頭驗一次行為，講一個沒有技術理由的風格要求（「這邊一律用 `for…of`，不要 `forEach`」）。
@@ -188,8 +194,10 @@ chmod +x "$HOME/.claude/hooks/rather-than/"*.sh
 
 ### 更新
 
-`npx skills update rather-than` 會更新 skill；hook 要再跑一次那行 `cp -R`。
-你的 store 兩者都不會動到 —— 它在這兩個目錄之外。
+再跑一次安裝指令就好 —— plugin CLI 會把 repo shallow clone 到 `~/.cache/plugins/<slug>`，
+然後蓋掉前一份。走手動那條路則是 `npx skills update rather-than` 更新 skill，
+hook 再跑一次那行 `cp -R`。你的 store 與它的 `.state/` 在 `~/.claude/rather-than/`，
+兩條路都不會動到。
 
 ## 附註
 
@@ -202,6 +210,11 @@ chmod +x "$HOME/.claude/hooks/rather-than/"*.sh
   這是依 hooks 參考文件關於 prompt injection 防禦的建議。
 - `index.md` 是衍生產物。要重建請用
   `skills/rather-than/scripts/rebuild-index.sh <root>`，永遠不要手改。
+- 這個 repo 同時是一個 open-plugin 套件：`.plugin/plugin.json` 宣告 `hooks/hooks.json`，
+  其中的指令用 `${PLUGIN_ROOT}` —— plugin CLI 安裝時會把它改寫成各 agent 自己的變數
+  （`CLAUDE_PLUGIN_ROOT` 之類），而且它只改寫設定檔，不會改 script。
+  所以 hook script 自己兩種變數都認，兩者都沒設時退回 `~/.claude/skills/rather-than`，
+  手動那條路就是靠這個成立。
 - 有爭議的條目衝突（Mode B）與晉升的第五道關卡（Mode D）會交給另一個
   `multi-debate` skill。它沒有包在這個 repo 裡；沒有它的話，這兩條路的辯論要手動跑。
 - `skills/rather-than/evals/scenarios.md` 收著這套設計要對照的行為測試案例 ——

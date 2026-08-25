@@ -1,0 +1,12 @@
+{
+  "name": "rather-than",
+  "version": "0.1.0",
+  "description": "Record why you write code a particular way, as tendencies rather than rules: capture preference-driven decisions from ordinary conversation, confirm each with receipts, and inject them back every turn.",
+  "author": {
+    "name": "kingdom84521",
+    "url": "https://github.com/kingdom84521"
+  },
+  "homepage": "https://github.com/kingdom84521/rather-than",
+  "license": "Apache-2.0",
+  "hooks": "./hooks/hooks.json"
+}

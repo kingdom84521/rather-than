@@ -19,7 +19,12 @@ get_field() {
 sid="$(get_field session_id)"; [ -n "$sid" ] || sid="unknown-$$"
 cwd="$(get_field cwd)"; [ -n "$cwd" ] || cwd="$PWD"
 
-skill_scripts="$HOME/.claude/skills/rather-than/scripts"
+plugin_root="${CLAUDE_PLUGIN_ROOT:-${PLUGIN_ROOT:-}}"
+if [ -n "$plugin_root" ]; then
+  skill_scripts="$plugin_root/skills/rather-than/scripts"
+else
+  skill_scripts="$HOME/.claude/skills/rather-than/scripts"
+fi
 # Resolve repo identity: git root if available, else cwd.
 repo_root="$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null || true)"
 [ -n "$repo_root" ] || repo_root="$cwd"
@@ -28,7 +33,7 @@ repo_key="$(basename "$repo_root")-$(printf '%s' "$repo_root" | sha256sum | cut 
 personal="$HOME/.claude/rather-than"
 teamlocal="$personal/team/$repo_key"
 project="$repo_root/.claude/rather-than"
-state_base="$HOME/.claude/skills/rather-than/.state"
+state_base="$HOME/.claude/rather-than/.state"
 state_personal="$state_base/personal"
 state_team="$state_base/team-$repo_key"
 state_project="$state_base/project-$repo_key"

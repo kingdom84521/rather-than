@@ -20,7 +20,7 @@ if printf '%s' "$input" | grep -q '"stop_hook_active"[[:space:]]*:[[:space:]]*tr
 fi
 
 sid="$(get_field session_id)"; [ -n "$sid" ] || sid="unknown-$$"
-state_base="$HOME/.claude/skills/rather-than/.state"
+state_base="$HOME/.claude/rather-than/.state"
 journals="$HOME/.claude/rather-than/journal"
 
 n="$(grep -h -c '^## confirmed / ' "$journals"/*.md 2>/dev/null | awk '{s+=$1} END{print s+0}')"

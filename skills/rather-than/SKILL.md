@@ -17,7 +17,7 @@ Two scopes. The classification question decides which one an entry lands in.
 |---|---|---|
 | personal | `~/.claude/rather-than/` | no |
 | team (local staging) | `~/.claude/rather-than/team/<repo-key>/` | no |
-| project (published) | `<repo>/.claude/rather-than/` | yes (gitignore `.state/` and `journal/`) |
+| project (published) | `<repo>/.claude/rather-than/` | yes (gitignore `index.md`) |
 
 `<repo-key>` is derived from the repo (git-root directory name plus a short
 path hash); the injected session context states the resolved path — use that,
@@ -40,7 +40,11 @@ Each root contains:
   session's repo and team staging root — that header, not the file's
   location, is how consolidation routes team-scope blocks.
 - `ignore.md` — topics the user has opted out of.
-- `.state/` — hook bookkeeping and the consolidation lock.
+
+Execution state — hook bookkeeping, per-root usage logs, the consolidation lock —
+lives in one place outside the roots, at `~/.claude/rather-than/.state/`, so an
+agent or plugin update cannot take it with it. The injected session context names
+every state dir; use those paths.
 
 `<sid>` comes from the injected session context. If absent, generate one with
 `date +%Y%m%dT%H%M%S`-`$RANDOM` and reuse it for the whole session.
@@ -287,7 +291,7 @@ Append never-track topics to `ignore.md` as
 `- <slug>: <one-sentence scope description>`.
 
 Then log every answer — including skips — to
-`~/.claude/skills/rather-than/.state/elicitation.log`, one line each:
+`~/.claude/rather-than/.state/elicitation.log`, one line each:
 
 ```
 <YYYY-MM-DD> <origin> <slug> <personal|team|defer|never>
