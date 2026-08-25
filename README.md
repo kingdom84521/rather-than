@@ -2,9 +2,9 @@
 
 English | [繁體中文](README.zh-TW.md)
 
-A [Claude Code](https://claude.com/claude-code) skill plus three hooks that record
-*why* you write code a particular way, so later sessions do not re-litigate settled
-decisions.
+A [Claude Code](https://claude.com/claude-code) plugin — one skill and three hooks —
+that records *why* you write code a particular way, so later sessions do not re-litigate
+settled decisions.
 
 `CLAUDE.md` is where rules live. But most of what makes a codebase feel like yours is
 softer than a rule — "prefer an explicit generic rather than an inferred one", "prefer a
@@ -230,12 +230,12 @@ touches.
   per the hooks reference guidance on prompt-injection defense.
 - `index.md` is derived. Rebuild it with `skills/rather-than/scripts/rebuild-index.sh <root>`;
   never hand-edit it.
-- The repo doubles as an open-plugin package: `.plugin/plugin.json` declares
-  `hooks/hooks.json`, whose commands use `${PLUGIN_ROOT}` — the plugin CLI rewrites that
-  to each agent's own variable (`CLAUDE_PLUGIN_ROOT` and friends) as it installs, and it
-  rewrites config files only, never scripts. The hook scripts therefore read either
-  variable themselves and fall back to `~/.claude/skills/rather-than` when neither is set,
-  which is what keeps the manual route working.
+- The plugin is authored in the vendor-neutral open-plugin format: `.plugin/plugin.json`
+  declares `hooks/hooks.json`, whose commands use `${PLUGIN_ROOT}` — the plugin CLI
+  rewrites that to each agent's own variable (`CLAUDE_PLUGIN_ROOT` and friends) as it
+  installs, and it rewrites config files only, never scripts. The hook scripts therefore
+  read either variable themselves and fall back to `~/.claude/skills/rather-than` when
+  neither is set, which is what keeps the skills-CLI route working.
 - Contested conflicts (Mode B) and promotion gate 5 (Mode D) hand off to a separate
   `multi-debate` skill. It is not bundled here; without it those two paths need the debate
   run by hand.

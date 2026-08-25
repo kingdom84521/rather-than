@@ -2,8 +2,8 @@
 
 [English](README.md) | 繁體中文
 
-一個 [Claude Code](https://claude.com/claude-code) skill 加三個 hook，用來記錄你「為什麼」把程式寫成這個樣子，
-讓後面的 session 不必重新爭論已經定案的事。
+一個 [Claude Code](https://claude.com/claude-code) plugin —— 一個 skill 加三個 hook ——
+用來記錄你「為什麼」把程式寫成這個樣子，讓後面的 session 不必重新爭論已經定案的事。
 
 規則的家是 `CLAUDE.md`。但真正讓一份程式碼像是你寫的東西，多半比規則更軟 ——
 「泛型寧可寫明，不要靠推導」、「防護寧可讓型別系統擋住，不要靠慣例加一行註解」。
@@ -210,11 +210,11 @@ hook 再跑一次那行 `cp -R`。你的 store 與它的 `.state/` 在 `~/.claud
   這是依 hooks 參考文件關於 prompt injection 防禦的建議。
 - `index.md` 是衍生產物。要重建請用
   `skills/rather-than/scripts/rebuild-index.sh <root>`，永遠不要手改。
-- 這個 repo 同時是一個 open-plugin 套件：`.plugin/plugin.json` 宣告 `hooks/hooks.json`，
-  其中的指令用 `${PLUGIN_ROOT}` —— plugin CLI 安裝時會把它改寫成各 agent 自己的變數
-  （`CLAUDE_PLUGIN_ROOT` 之類），而且它只改寫設定檔，不會改 script。
+- 這個 plugin 是用 vendor-neutral 的 open-plugin 格式寫的：`.plugin/plugin.json` 宣告
+  `hooks/hooks.json`，其中的指令用 `${PLUGIN_ROOT}` —— plugin CLI 安裝時會把它改寫成各
+  agent 自己的變數（`CLAUDE_PLUGIN_ROOT` 之類），而且它只改寫設定檔，不會改 script。
   所以 hook script 自己兩種變數都認，兩者都沒設時退回 `~/.claude/skills/rather-than`，
-  手動那條路就是靠這個成立。
+  skills CLI 那條路就是靠這個成立。
 - 有爭議的條目衝突（Mode B）與晉升的第五道關卡（Mode D）會交給另一個
   `multi-debate` skill。它沒有包在這個 repo 裡；沒有它的話，這兩條路的辯論要手動跑。
 - `skills/rather-than/evals/scenarios.md` 收著這套設計要對照的行為測試案例 ——
