@@ -1,5 +1,7 @@
 # rather-than
 
+English | [繁體中文](README.zh-TW.md)
+
 A [Claude Code](https://claude.com/claude-code) skill plus three hooks that record
 *why* you write code a particular way, so later sessions do not re-litigate settled
 decisions.
@@ -205,6 +207,31 @@ hook files and leave `.state/` and your store untouched.
 - `skills/rather-than/evals/scenarios.md` holds the behavior test cases the design is
   checked against — capture positives, filters that must stay silent, batch discipline.
   Real-world failures belong in that file; they outrank synthetic cases.
+
+## Known issues
+
+Observed while running this on real work. All three share one root: the store is Markdown
+read at a model's discretion, and nothing enforces how it gets read.
+
+- **Analysis misreads what you meant.** The analysis pass turns raw journal lines into
+  candidates, and it takes the wrong end of the stick often enough to matter — the
+  instead-of side swapped, a remark scoped to one file generalized into a class of targets,
+  a reason inferred that you would never have given. The receipts on the question and the
+  `REVIEW.md` gate are the only correction points, which leaves the whole burden of
+  catching a misreading on you.
+- **The full entry is supposed to be read before writing code, and in practice is not.**
+  `SKILL.md` says to open `prefer/<slug>.md` first, and that entries flagged `[N except]`
+  *must* be read before use. Nothing enforces it, and in practice the model works off the
+  injected one-line index and skips the file — so `Except` clauses, the very part that
+  keeps a tendency from misfiring, are the least-read part of the store. The usage log
+  cannot measure this either: it records applied / excepted / overridden, not whether a
+  file was opened.
+- **Reading the store has no tooling and costs a lot of context.** There is no query — no
+  "give me this category's entries", no field projection. Reading one entry means `cat`ing
+  the whole file, so consulting a handful burns a large amount of context on frontmatter
+  and prose the task at hand does not need. That cost feeds the previous item: the cheap
+  path (the index, already in context) is always there, and the correct path (the file) is
+  the expensive one.
 
 This repository contains the mechanism only. Preferences, journals, and execution state
 live under your own `~/.claude/` and never enter it.
