@@ -6,6 +6,7 @@
 
 <p align="center">
   <a href="https://www.skills.sh/kingdom84521/rather-than"><img src="https://www.skills.sh/b/kingdom84521/rather-than" alt="skills.sh" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/kingdom84521/rather-than?style=flat" alt="License" /></a>
 </p>
 
 <p align="center">
@@ -79,6 +80,36 @@ The design constraints that keep this from becoming another linter you switch of
   mechanical-enforceability triage, adversarial debate — reaches you for approval. What
   clears them becomes a lint rule or a line in your instruction file; the source entries
   are deleted.
+
+## How it differs from the memory plugins
+
+One test tells you which kind of tool you actually want:
+
+> Can the thing you want remembered be phrased as **X rather than Y**, where **Y is not
+> wrong** — merely not what you chose?
+
+If Y really is wrong — `rm -rf` pointed at the wrong path, a stray `console.log`, a test
+run that never happened — you want a guard, and a guard is a different machine.
+[hookify](https://github.com/anthropics/claude-code/tree/main/plugins/hookify) mines the
+same signal this does, the things you corrected, and compiles them into regex rules that
+block or warn at the tool layer. That is a different problem, and the regex is the tell: no
+pattern can express *prefer a named type rather than an inline structural shape, in
+exported signatures* — there is no string to match, and both sides are valid code.
+
+If Y is fine, you are choosing between two acceptable options. That is the only thing
+rather-than stores.
+
+| | What it carries back | Asks before storing | Exceptions and scope |
+|---|---|---|---|
+| Session-memory plugins ([claude-mem](https://github.com/thedotmack/claude-mem), [Remember](https://claude.com/plugins/remember), [basic-memory](https://github.com/basicmachines-co/basic-memory)) | what happened, AI-compressed; project facts | no — background hooks | not applicable |
+| Built-in auto-memory, `feedback` type | guidance you gave about how to work | no | none |
+| `Persona.md` in [remember.md](https://github.com/remember-md/remember) | your code style, AI-maintained | no | none |
+| [learning-loop](https://github.com/melodykoh/learning-loop-skill) | corrections, failure modes, judgment shifts | yes, at wrap-up | routes each into a rule or a fact |
+| **rather-than** | the choice **and the alternative it beat** | yes — batched, with receipts | `Except` clauses, an `observed-in` scope, and a gated path to becoming a real rule |
+
+Memory answers *what happened* and *what is true*. rather-than answers *what you chose,
+instead of what, and where that does not apply*. They stack rather than compete: nothing
+here stores project facts, and nothing here replaces a memory plugin's search.
 
 ## Install
 

@@ -6,6 +6,7 @@
 
 <p align="center">
   <a href="https://www.skills.sh/kingdom84521/rather-than"><img src="https://www.skills.sh/b/kingdom84521/rather-than" alt="skills.sh" /></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/kingdom84521/rather-than?style=flat" alt="License" /></a>
 </p>
 
 <p align="center">
@@ -69,6 +70,35 @@ rather-than 卡在這兩者之間。它在日常對話裡盯著「你出手轉�
   它才會嘗試把一群傾向蒸餾成單一原則，而且只有通過五道關卡的候選 ——
   支持度、例外封閉性、反例搜尋、可機械強制性分類、對抗式辯論 —— 才會送到你面前等核可。
   通過的會變成一條 lint 規則，或你指示檔裡的一行；來源條目隨之刪除。
+
+## 跟 memory 類 plugin 的差別
+
+一個判準就能分辨你要的是哪一種工具：
+
+> 你想被記住的那件事，能不能寫成「**X rather than Y**」，而 **Y 並不算錯** ——
+> 只是你沒選它？
+
+如果 Y 真的是錯的 —— `rm -rf` 指到不該指的路徑、忘了刪的 `console.log`、根本沒跑的測試 ——
+你要的是護欄，而護欄是另一台機器。
+[hookify](https://github.com/anthropics/claude-code/tree/main/plugins/hookify)
+挖的訊號跟這個工具一樣（你糾正過的東西），但它把訊號編譯成 regex 規則，
+在工具層阻擋或警告。那是另一個問題，而 regex 本身就是證據：
+沒有任何 pattern 能表達「導出簽章偏好具名型別，而不是內聯結構」——
+沒有字串可以比對，而且兩邊都是合法的程式碼。
+
+如果 Y 沒有錯，那你是在兩個都可以接受的選項之間做選擇。rather-than 只存這一種東西。
+
+| | 帶回去什麼 | 存之前會問你嗎 | 例外與範圍 |
+|---|---|---|---|
+| session 記憶類 plugin（[claude-mem](https://github.com/thedotmack/claude-mem)、[Remember](https://claude.com/plugins/remember)、[basic-memory](https://github.com/basicmachines-co/basic-memory)） | 發生過什麼，經 AI 壓縮；專案事實 | 不會 —— 背景 hook | 不適用 |
+| 內建 auto-memory 的 `feedback` 型別 | 你對「該怎麼工作」給過的指引 | 不會 | 沒有 |
+| [remember.md](https://github.com/remember-md/remember) 的 `Persona.md` | 你的 code style，由 AI 自動維護 | 不會 | 沒有 |
+| [learning-loop](https://github.com/melodykoh/learning-loop-skill) | 糾正、失敗模式、判斷轉變 | 會，在收尾時 | 分別路由成一條規則或一則事實 |
+| **rather-than** | 那個選擇，**以及被它打敗的那個選項** | 會 —— 批次提問，並附上收據 | `Except` 子句、`observed-in` 範圍，以及一條設有關卡、通往「變成真正規則」的路 |
+
+memory 回答的是「發生過什麼」與「什麼是真的」。rather-than 回答的是
+「你選了什麼、而不是什麼、以及哪裡不適用」。兩者是疊加而不是競爭：
+這裡不存任何專案事實，也取代不了記憶類 plugin 的搜尋能力。
 
 ## 安裝
 
