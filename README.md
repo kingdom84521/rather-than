@@ -329,8 +329,10 @@ read into context until you give the command.
 
 ## Known limitations
 
-Observed while running this on real work. The first three share one root: the store is
-Markdown read at a model's discretion, and nothing enforces how it gets read.
+Observed while running this on real work. The first three share one root — the store is
+Markdown read at a model's discretion, and nothing enforces how it gets read. The next two
+share another: capture is an instruction the model obeys, with nothing behind it that knows
+who was speaking or how much has already been written.
 
 - **Analysis misreads what you meant.** The analysis pass turns raw journal lines into
   candidates, and it takes the wrong end of the stick often enough to matter — the
@@ -351,6 +353,20 @@ Markdown read at a model's discretion, and nothing enforces how it gets read.
   and prose the task at hand does not need. That cost feeds the previous item: the cheap
   path (the index, already in context) is always there, and the correct path (the file) is
   the expensive one.
+- **Nothing tells human steering apart from another agent's.** The whole premise is that a
+  human steered — the journal's own line archetype begins with "User…" — but a subagent's
+  prompt comes from its parent, a message between sessions comes from another model, and the
+  hook payload carries no author identity. So cross-session and cross-subagent traffic (parent
+  to child, child to parent, sibling to sibling) lands in the journal as though you had said
+  it, and can reach a batch question whose receipts quote an AI rather than you. Until the
+  store records who was speaking, treat receipts from a session you did not personally drive
+  as suspect.
+- **How much gets recorded depends on the harness, not on how much you steered.** The duty is
+  one line of injected text that the model obeys; there is no counter, no rate limit and no
+  write-time deduplication behind it, so eagerness varies by where it runs — the VS Code
+  extension appears to journal more than the terminal CLI for comparable work. It is also
+  unmeasurable from the store itself: the provenance header carries session, repo, staging root
+  and start time, and no client identity. So this stays an impression, not a number.
 - **The Codex half is verified against the contract, not against a live Codex.** Its
   documented hook events, stdin fields and output schema match Claude Code's, and the hooks
   were exercised end to end against that contract — but on a machine with the Codex CLI
