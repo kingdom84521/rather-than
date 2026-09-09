@@ -18,9 +18,14 @@ tmp="$index.tmp.$$"
       conf="$(awk '/^confidence:[[:space:]]*/{sub(/^confidence:[[:space:]]*/,""); print; exit}' "$f")"
       cat_="$(awk '/^category:[[:space:]]*/{sub(/^category:[[:space:]]*/,""); print; exit}' "$f")"
       excepts="$(awk '/^## Except/{flag=1; next} /^## /{flag=0} flag && /^- /{n++} END{print n+0}' "$f")"
+      # The Except situations ride in the index line (truncated). The index is
+      # the cheap path every turn — it must carry the misfire guard itself, not
+      # just count it; the Except reasons stay in the file.
+      excsum="$(awk '/^## Except/{flag=1; next} /^## /{flag=0} flag && /^- /{sub(/^- /,""); s = s (s ? "; " : "") $0} END{print s}' "$f")"
+      [ "${#excsum}" -gt 120 ] && excsum="${excsum:0:119}…"
 
       line="- ${slug}: ${topic:-"(no topic)"} [${scope:-"?"}]"
-      [ "${excepts}" -gt 0 ] && line="$line [${excepts} except]"
+      [ "${excepts}" -gt 0 ] && line="$line [${excepts} except: ${excsum}]"
       [ "${conf:-}" = "inferred" ] && line="$line [inferred]"
       printf '%s\t%s\n' "${cat_:-uncategorized}" "$line"
     done | sort -s -t"$(printf '\t')" -k1,1 | awk -F'\t' '

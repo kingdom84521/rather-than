@@ -99,9 +99,9 @@ ctx="$(
   if [ -n "$changes" ]; then
     echo "The preference index changed since this session last read it (possibly a concurrent session). Changed lines:"
     echo "$changes"
-    echo "Re-read <root>/index.md for the full picture if needed; full entries live at <root>/prefer/<slug>.md."
+    echo "Re-read <root>/index.md for the full picture if needed; field-projected entry reads: bash \"$skill_scripts/query.sh\" <root> [-c <category>] [-s <slug>]."
   else
-    echo "The preference index changed since this session last read it; re-read <root>/index.md before the next code edit."
+    echo "The preference index changed since this session last read it; re-read <root>/index.md before the next code edit (field-projected entry reads: bash \"$skill_scripts/query.sh\" <root>)."
   fi
 )"
 

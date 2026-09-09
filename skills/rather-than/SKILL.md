@@ -58,6 +58,10 @@ every state dir; use those paths.
 
 Skill scripts live in this skill's `scripts/` directory. Rebuild the index
 with `scripts/rebuild-index.sh <root>` after any change under `prefer/`.
+Read entries with `scripts/query.sh <root> [-c <category>] [-s <slug>]
+[-m <text>] [-f <fields>]` — field projection instead of whole-file reads;
+the default projection (topic, observed-in, Except) is exactly what the
+apply path needs, a few lines per entry.
 
 ### Write rules
 
@@ -85,16 +89,21 @@ slug per entry. Treat it as a table of contents.
 **Implicit path (you are writing code):** the index is grouped by
 category — first pick the categories the current work touches (writing a
 service touches error handling, naming, types; a template touches
-formatting, structure), then scan those sections' entries — **plus the `uncategorized` section,
-always** (an entry without a category is invisible to category-first
-scanning; sweeping uncategorized is what keeps it alive until an audit
-backfills its category); read `<root>/prefer/<slug>.md`
-for each relevant entry before writing, not after. The Except clauses live
-in the file — applying a tendency inside its own exception is worse than
-not knowing it. Entries flagged `[N except]` must be read before use.
-Follow the tendency unless it conflicts with correctness, local
-readability, or a recorded Except; when you deviate, say so in one sentence
-— do not ask permission.
+formatting, structure), then consult those categories with
+`scripts/query.sh <root> -c <category>` — **plus the `uncategorized`
+section, always** (an entry without a category is invisible to
+category-first scanning; sweeping uncategorized is what keeps it alive
+until an audit backfills its category) — before writing, not after. The
+default projection returns each entry's topic, observed-in scope, and
+Except clauses in a few lines, so consulting every relevant entry is
+cheaper than skipping one; the index line itself also carries each
+entry's Except situations, flagged `[N except: …]`. Applying a tendency
+inside its own exception is worse than not knowing it — never apply an
+excepted entry without its Excepts in view (the projection suffices; the
+file or a `-f all` query holds their reasons and evidence). Follow the
+tendency unless it conflicts with correctness, local readability, or a
+recorded Except; when you deviate, say so in one sentence — do not ask
+permission.
 
 **Stay inside `observed-in`.** A preference is trusted evidence only in
 the contexts it was observed in; the current work falling outside them is
