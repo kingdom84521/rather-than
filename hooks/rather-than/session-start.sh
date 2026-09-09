@@ -38,8 +38,11 @@ mkdir -p "$personal/prefer" "$personal/journal" "$teamlocal/prefer" "$state_base
 
 journal="$personal/journal/$sid.md"
 if [ ! -f "$journal" ]; then
-  printf '<!-- session %s | repo %s | team-staging-root %s | started %s -->\n' \
-    "$sid" "$repo_root" "$teamlocal" "$(date -Iseconds)" > "$journal"
+  # Best-effort client identity: capture eagerness varies by harness, and
+  # without this field the variance cannot even be counted from the store.
+  client="${CLAUDE_CODE_ENTRYPOINT:-${TERM_PROGRAM:-unknown}}"
+  printf '<!-- session %s | repo %s | team-staging-root %s | client %s | started %s -->\n' \
+    "$sid" "$repo_root" "$teamlocal" "$client" "$(date -Iseconds)" > "$journal"
 fi
 find "$state_base/sessions" -name '*.hash' -mtime +7 -delete 2>/dev/null || true
 touch "$state_base/sessions/$sid.alive" 2>/dev/null || true

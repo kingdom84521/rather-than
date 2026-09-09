@@ -6,6 +6,17 @@ record is unrecoverable, a bad analysis can be redone. Everything below is
 about turning raw sentences into candidates worth asking about — the user
 only ever sees survivors.
 
+## Zeroth gate: who was steering?
+
+Preference evidence is human steering, full stop. A raw line authored by
+another model — a parent agent's task prompt recorded while running as a
+subagent, a cross-session message, anything tagged `[author: unverified]`
+(A1's author discipline) — never becomes a candidate and never appears in
+a question's receipts. It stays in the journal as context: it may explain
+what the human did next, and the human's own reaction to it is capturable
+as usual. A candidate whose receipts would quote a non-human line is not
+ready to ask.
+
 ## First gate: is it even a decision?
 
 Route every raw line through this table before any signal matching. Only

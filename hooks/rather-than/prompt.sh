@@ -55,7 +55,7 @@ rebuild_if_stale "$teamlocal"
 idx_hash="$(cat "$personal/index.md" "$teamlocal/index.md" "$project/index.md" 2>/dev/null | sha256sum | cut -d' ' -f1)"
 prev="$(cat "$state" 2>/dev/null || true)"
 
-reminder="rather-than: journal every steering event from this turn (one English sentence incl. instead-of and working context; plain tasks too). Apply index tendencies within their observed-in scope; never block; log usage events. Full duty spec was injected at session start."
+reminder="rather-than: journal every steering event from this turn (one English sentence incl. instead-of and working context; plain tasks too; one event one line; 'User' = the human — name any other author). Apply index tendencies within their observed-in scope; never block; log usage events. Full duty spec was injected at session start."
 
 if [ "$idx_hash" = "$prev" ]; then
   if command -v jq >/dev/null 2>&1; then

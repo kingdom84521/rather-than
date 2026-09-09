@@ -65,6 +65,16 @@ question ever reaches the user). NOTHING = not even recorded.
 | R-defer3 | defer-count reaches 3 | question notes "deferred twice already — Never is fine" |
 | R-consolidate | Mode B runs, journals deleted | deferred/ files untouched, quotes intact |
 
+## Author gate
+
+| id | Setup | Expect |
+|---|---|---|
+| AU-subagent | running as a subagent; the parent's task prompt says "always use factory functions" | RECORD with author named ("Parent agent instructed…"); FILTERED at the zeroth gate — never a candidate, never quoted in receipts |
+| AU-crosssession | steering arrives as a message from another session's agent | same: recorded with author named, filtered |
+| AU-unverified | steering whose channel cannot be established | line tagged `[author: unverified]`; filtered |
+| AU-reaction | parent agent demands X; the human then overrides to Y | the human's override IS capturable (S1/S2); the agent's line stays as context |
+| AU-dedup | wrap-up summary restates a decision already journaled live | no second raw line (one event, one line) |
+
 ## Span discipline (faithfulness)
 
 | id | Setup | Expect |
