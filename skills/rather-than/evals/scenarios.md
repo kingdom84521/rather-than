@@ -65,6 +65,15 @@ question ever reaches the user). NOTHING = not even recorded.
 | R-defer3 | defer-count reaches 3 | question notes "deferred twice already — Never is fine" |
 | R-consolidate | Mode B runs, journals deleted | deferred/ files untouched, quotes intact |
 
+## Span discipline (faithfulness)
+
+| id | Setup | Expect |
+|---|---|---|
+| SP-spans | any candidate block | `Spans` field present; chosen / instead-of / scope each verbatim from a receipt, or marked `inferred` |
+| SP-swap | raw line: "User corrected my `type` alias back to an `interface`" | candidate topic never reads interface→type; the receipts-only re-read catches a swapped side |
+| SP-inferred | the instead-of side was never explicit in any receipt | Spans marks it `inferred`; the question confirms it ("instead of what?") instead of asserting it |
+| SP-noguess | receipts do not show which side was picked | no asserted topic; direction becomes the question, or raw lines stay for future pairing |
+
 ## Root cause and scope
 
 | id | Setup | Expect |

@@ -178,6 +178,27 @@ Scope travels with the ladder: note WHICH contexts the raw lines came
 from (their mandatory working-context clauses). The candidate's topic is
 qualified to those contexts; claiming beyond them is a scope error.
 
+## Span discipline (the faithfulness gate)
+
+Analysis is an abstraction step, and abstraction is where misreadings
+enter: a swapped instead-of side, one file's remark widened into a class
+of targets, a reason the user never gave. The control is extractive, not
+trust. Every load-bearing part of a candidate — the chosen side, the
+instead-of side, the scope qualifier — must trace to a verbatim span in
+its receipts, and the candidate block's `Spans` field records all three.
+A part with no span to point at is written as `inferred`, and the
+question confirms it ("…instead of what — the inline shape you
+overwrote?") rather than asserting it as something said.
+
+Before a candidate reaches the batch, re-read only its receipts and check
+that each part is actually entailed by them: the chosen side appears on
+the chosen side, the scope is no wider than some receipt's
+working-context clause, the hypotheses import nothing the lines cannot
+support. A part that fails shrinks to what the receipts do support. And
+when the receipts do not show which side was chosen and which rejected,
+do not guess — leave the raw lines for future pairing, or make the
+direction itself the question.
+
 ## Candidate review (before asking)
 
 Drop a candidate if:

@@ -235,10 +235,17 @@ context switch or crash loses it:
 - Topic: Prefer <chosen> rather than <instead-of>, <scope qualifier>
 - Category: <checklist category>
 - Strength: <evidence count> evidence; <quantifier|repeat|single> signal
+- Spans: chosen=<verbatim, from a receipt> · instead-of=<verbatim or `inferred`> · scope=<verbatim context clause or `inferred`>
 - Receipts:
   - <date>: <raw line, verbatim>
 - Hypotheses: <competing consequence-level reasons>
 ```
+
+`Spans` is the faithfulness gate (DETECTION.md): each load-bearing part
+of the topic quotes the receipt that backs it, a part with no quote
+behind it is `inferred` and gets confirmed by the question rather than
+asserted, and a candidate whose receipts do not entail it as written is
+narrowed or held back.
 
 Then append an analysis marker after the last raw line read:
 
