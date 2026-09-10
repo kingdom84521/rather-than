@@ -39,8 +39,11 @@ git until the user opts in.
 Each root contains:
 
 - `prefer/<slug>.md` — one preference per file. **Source of truth.**
-- `index.md` — generated topic list, injected into context every turn by the
-  companion hook. Never edit by hand; rebuild it instead.
+- `index.md` — generated, activation-tiered topic list, injected into context
+  every turn by the companion hook: a `habitual` section (entries that earned
+  always-on status through use — full lines) and a `cold` section (category,
+  count, slugs only — consult on demand). Never edit by hand; rebuild it
+  instead.
 - `journal/<sid>.md` — **personal root only**. This session's raw event
   log (dirty, one sentence per event) plus confirmed blocks awaiting
   consolidation. The hook creates it with a provenance header naming the
@@ -57,7 +60,12 @@ every state dir; use those paths.
 `date +%Y%m%dT%H%M%S`-`$RANDOM` and reuse it for the whole session.
 
 Skill scripts live in this skill's `scripts/` directory. Rebuild the index
-with `scripts/rebuild-index.sh <root>` after any change under `prefer/`.
+with `scripts/rebuild-index.sh <root> <state-dir-for-root>` after any change
+under `prefer/` (the state dir is what makes the index tiered: activation is
+computed ACT-R-style from usage.log events, Evidence dates and `created` —
+recency- and frequency-weighted with power-law decay — so practice promotes
+an entry into `habitual`, disuse decays it to `cold`, and repeated overrides
+force it cold; without a state dir the script falls back to a flat list).
 Read entries with `scripts/query.sh <root> [-c <category>] [-s <slug>]
 [-m <text>] [-f <fields>]` — field projection instead of whole-file reads;
 the default projection (topic, observed-in, Except) is exactly what the
@@ -83,26 +91,28 @@ correctness, to readability in context, and to their own Excepts. The
 promotion path in `references/PROMOTE.md` is how a tendency becomes an
 actual rule; until then, treat it as a documented lean.
 
-The injected context carries the index for both scopes — a topic line and a
-slug per entry. Treat it as a table of contents.
+The injected context carries the index for both scopes, in two tiers.
+`habitual` entries earned always-on status through use — their full lines
+are in front of you every turn. `cold` entries appear only as
+`category: count (slugs)` — they are not active constraints, and their
+place is earned back the same way it was lost: by being consulted and
+used.
 
-**Implicit path (you are writing code):** the index is grouped by
-category — first pick the categories the current work touches (writing a
-service touches error handling, naming, types; a template touches
-formatting, structure), then consult those categories with
-`scripts/query.sh <root> -c <category>` — **plus the `uncategorized`
-section, always** (an entry without a category is invisible to
-category-first scanning; sweeping uncategorized is what keeps it alive
-until an audit backfills its category) — before writing, not after. The
-default projection returns each entry's topic, observed-in scope, and
-Except clauses in a few lines, so consulting every relevant entry is
-cheaper than skipping one; the index line itself also carries each
-entry's Except situations, flagged `[N except: …]`. Applying a tendency
-inside its own exception is worse than not knowing it — never apply an
-excepted entry without its Excepts in view (the projection suffices; the
-file or a `-f all` query holds their reasons and evidence). Follow the
-tendency unless it conflicts with correctness, local readability, or a
-recorded Except; when you deviate, say so in one sentence — do not ask
+**Implicit path (you are writing code):** apply the `habitual` entries
+whose category and observed-in the current work touches — their index
+lines carry the Except situations, flagged `[N except: …]`, and applying
+a tendency inside its own exception is worse than not knowing it: never
+apply an excepted entry without its Excepts in view (the index line or a
+query projection suffices; `-f all` holds reasons and evidence). For the
+`cold` tier: when the current work touches a cold category — including
+`uncategorized`, always (an entry without a category is invisible to
+category-first thinking; sweeping it is what keeps it alive until an
+audit backfills its category) — consult it with `scripts/query.sh <root>
+-c <category>` **before writing, not after**; the default projection
+returns topic, observed-in and Excepts in a few lines per entry.
+Applying a cold entry unconsulted is a misfire. Follow the tendency
+unless it conflicts with correctness, local readability, or a recorded
+Except; when you deviate, say so in one sentence — do not ask
 permission.
 
 **Stay inside `observed-in`.** A preference is trusted evidence only in
@@ -138,11 +148,15 @@ the skill state dir (paths given in the injected context):
 <YYYY-MM-DD> <slug> overridden reason=<one-token-reason>
 ```
 
-One bash append per event, best-effort — a missed line only makes
-promotion more conservative. These counts feed the promotion gates
-(PROMOTE.md); `applied` is weak evidence (relevance, not endorsement),
-user-confirmed Evidence is strong evidence, and a high overridden ratio is
-counter-evidence.
+One bash append per event — and no longer merely best-effort: these
+events are what drive the index tiers. `applied` and `excepted`
+strengthen an entry toward (and keep it in) the always-on `habitual`
+tier, disuse decays it back to `cold`, and two or more `overridden`
+events making up half the outcomes force it cold regardless of recency —
+so a missed line now weakens injection, not just promotion statistics.
+The same counts feed the promotion gates (PROMOTE.md); `applied` is weak
+evidence (relevance, not endorsement), user-confirmed Evidence is strong
+evidence, and a high overridden ratio is counter-evidence.
 
 ## Mode selection
 
@@ -410,16 +424,19 @@ that carries them.
 
 ## Mode C — view and maintain
 
-**View** → answer from the injected index. Read individual files only for
-entries the user actually asked about. Do not recite the whole store.
+**View** → answer from the injected index, filling in cold entries'
+topics with `scripts/query.sh` (the injected cold tier carries slugs
+only). Read individual files only for entries the user actually asked
+about. Do not recite the whole store.
 
 **Delete** → confirm the scope, remove `prefer/<slug>.md`, rebuild the
 index. Deletion means deletion; do not rewrite the entry as a former
 preference.
 
 **Review** (user asks to review preferences) → list all entries from the
-injected index, numbered and grouped by category, in chat (a plain list —
-AskUserQuestion cannot hold a whole store). The user names one; translate
+injected index (cold topics via `query.sh`), numbered and grouped by
+category, in chat (a plain list — AskUserQuestion cannot hold a whole
+store). The user names one; translate
 that single entry into `<store>/REVIEW.md` per
 `references/REVIEW.md` — read-only, no writes. Edits or deletions happen
 only if the user then asks.

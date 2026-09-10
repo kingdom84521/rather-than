@@ -212,7 +212,7 @@ store 與判斷邏輯本來就與 agent 無關；只有自動化那層需要 hoo
 ```
 <store>/
 ├── prefer/<slug>.md      # 一筆偏好一個檔 —— 唯一真實來源
-├── index.md              # 產生出來的主題清單，每個 turn 都會注入
+├── index.md              # 產生出來、依活性分層的主題清單，每個 turn 都會注入
 ├── journal/<sid>.md      # 每個 session 的原始事件記錄
 ├── deferred/<slug>.md    # 你暫緩的候選，收據完整保留
 ├── ignore.md             # 你選擇不追蹤的主題
@@ -351,7 +351,13 @@ store 是 Markdown，讀不讀、怎麼讀，全憑模型自己斟酌，沒有�
 - 注入的文字一律寫成事實陳述，而不是命令句形式的系統指令，
   這是依 hooks 參考文件關於 prompt injection 防禦的建議。
 - `index.md` 是衍生產物。要重建請用
-  `skills/rather-than/scripts/rebuild-index.sh <root>`，永遠不要手改。
+  `skills/rather-than/scripts/rebuild-index.sh <root> [<state-dir>]`，永遠不要手改。
+- 索引的分層方式模仿習慣的運作：一筆條目靠「被使用」掙得常駐（`habitual`）地位 ——
+  活性以 ACT-R 式的公式從 usage.log 事件、Evidence 日期與 `created` 算出
+  （頻率×新近度、冪次衰減）—— 久不使用就衰減回 `cold`；被反覆 override 則直接打入 cold。
+  cold 條目只以「分類：數量（slug）」注入，工作碰到時再用 `query.sh` 查。
+  habitual 層有上限（`RATHER_THAN_HABIT_MAX`，預設 15），hook 每天會重刷一次索引，
+  讓衰減跟著時間走，而不是只跟著寫入走。
 - `skills/rather-than/scripts/query.sh <root>` 是便宜的讀取路徑：`-c` 篩分類、
   `-s` 選 slug、`-m` 比對文字、`-f` 投影欄位 —— 預設投影
   （topic、`observed-in`、Except）正是套用一個傾向時需要的東西。

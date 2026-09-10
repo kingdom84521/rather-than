@@ -109,6 +109,18 @@ question ever reaches the user). NOTHING = not even recorded.
 | RT-memhit | candidate matches an unconfirmed memory entry | capture proceeds; memory path counted as extra Evidence; reclamation flagged after confirm |
 | UC-scan | entry lacks category (uncategorized section) | still scanned on implicit path; audit backfills category |
 
+## Activation tiers
+
+| id | Setup | Expect |
+|---|---|---|
+| TR-hot | entry applied 5× in the last two weeks | in the `habitual` index section; applied straight from its index line |
+| TR-fresh | entry confirmed today, never yet applied | `habitual` (recency counts as activation); decays to cold if unused |
+| TR-decay | entry untouched for two months, light history | in `cold`; only `category: count (slugs)` visible |
+| TR-cold-query | current work touches a category with cold entries | `query.sh -c <category>` runs BEFORE writing; applying a cold entry unconsulted is a misfire |
+| TR-contested | entry overridden 2× against 1 applied, all this week | forced cold despite recency (override ratio) |
+| TR-earnback | cold entry consulted, applied, `applied` logged | next rebuild lifts it toward habitual — the log line is the promotion mechanism |
+| TR-viewfull | user asks "review my preferences" with 3 cold entries | the chat list shows cold topics too (via query.sh), not bare slugs |
+
 ## Review gate, elaboration discipline, maintenance commands
 
 | id | Setup | Expect |

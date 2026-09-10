@@ -37,25 +37,29 @@ state_project="$state_base/project-$repo_key"
 state="$state_base/sessions/$sid.hash"
 
 rebuild_if_stale() {
-  local root="$1"
+  local root="$1" sdir="$2"
   [ -d "$root/prefer" ] || return 0
+  # Stale when: no index; an entry changed; usage.log grew (use moves entries
+  # between tiers); or a day passed (activation decays with time, not events).
   if [ ! -f "$root/index.md" ] || \
-     [ -n "$(find "$root/prefer" -name '*.md' -newer "$root/index.md" -print -quit 2>/dev/null)" ]; then
-    bash "$skill_scripts/rebuild-index.sh" "$root" 2>/dev/null || true
+     [ -n "$(find "$root/prefer" -name '*.md' -newer "$root/index.md" -print -quit 2>/dev/null)" ] || \
+     { [ -f "$sdir/usage.log" ] && [ "$sdir/usage.log" -nt "$root/index.md" ]; } || \
+     [ -n "$(find "$root/index.md" -mtime +1 -print -quit 2>/dev/null)" ]; then
+    bash "$skill_scripts/rebuild-index.sh" "$root" "$sdir" 2>/dev/null || true
   fi
 }
 
 mkdir -p "$state_base/sessions"
 touch "$state_base/sessions/$sid.alive" 2>/dev/null || true
 
-rebuild_if_stale "$personal"
-rebuild_if_stale "$teamlocal"
-[ -d "$project" ] && rebuild_if_stale "$project"
+rebuild_if_stale "$personal" "$state_personal"
+rebuild_if_stale "$teamlocal" "$state_team"
+[ -d "$project" ] && rebuild_if_stale "$project" "$state_project"
 
 idx_hash="$(cat "$personal/index.md" "$teamlocal/index.md" "$project/index.md" 2>/dev/null | sha256sum | cut -d' ' -f1)"
 prev="$(cat "$state" 2>/dev/null || true)"
 
-reminder="rather-than: journal every steering event from this turn (one English sentence incl. instead-of and working context; plain tasks too; one event one line; 'User' = the human — name any other author). Apply index tendencies within their observed-in scope; never block; log usage events. Full duty spec was injected at session start."
+reminder="rather-than: journal every steering event from this turn (one English sentence incl. instead-of and working context; plain tasks too; one event one line; 'User' = the human — name any other author). Apply habitual-tier tendencies within their observed-in scope; query.sh any cold category the work touches before writing; never block; log usage events — usage.log drives the tiers. Full duty spec was injected at session start."
 
 if [ "$idx_hash" = "$prev" ]; then
   if command -v jq >/dev/null 2>&1; then

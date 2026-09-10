@@ -229,7 +229,7 @@ merge.
 ```
 <store>/
 ├── prefer/<slug>.md      # one preference per file — source of truth
-├── index.md              # generated topic list, injected every turn
+├── index.md              # generated, activation-tiered topic list, injected every turn
 ├── journal/<sid>.md      # per-session raw event log
 ├── deferred/<slug>.md    # candidates you postponed, with receipts kept
 ├── ignore.md             # topics you opted out of
@@ -387,8 +387,15 @@ who was speaking or how much has already been written.
   `UserPromptSubmit` timeout.
 - Injected text is phrased as factual statements rather than imperative system commands,
   per the hooks reference guidance on prompt-injection defense.
-- `index.md` is derived. Rebuild it with `skills/rather-than/scripts/rebuild-index.sh <root>`;
-  never hand-edit it.
+- `index.md` is derived. Rebuild it with
+  `skills/rather-than/scripts/rebuild-index.sh <root> [<state-dir>]`; never hand-edit it.
+- The index is tiered the way habits are: an entry earns always-on (`habitual`) status
+  through use — activation is scored ACT-R-style from usage.log events, Evidence dates and
+  `created` (recency- and frequency-weighted, power-law decay) — and decays back to `cold`
+  when unused; repeated overrides force it cold. Cold entries inject as `category: count
+  (slugs)` only and are consulted via `query.sh` when the work touches them. The habitual
+  tier is capped at `RATHER_THAN_HABIT_MAX` (default 15), and the hooks refresh the index
+  daily so decay happens with time, not only with writes.
 - `skills/rather-than/scripts/query.sh <root>` is the cheap read path: `-c` filters by
   category, `-s` selects slugs, `-m` matches text, `-f` projects fields — the default
   projection (topic, `observed-in`, Except) is what applying a tendency needs.
