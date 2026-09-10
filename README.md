@@ -329,51 +329,50 @@ read into context until you give the command.
 
 ## Known limitations
 
-Observed while running this on real work. Each item below now carries a mitigation, and
-each mitigation has a hole worth knowing about. The first three still share one root — the
-store is Markdown read at a model's discretion — and the next two share another: capture is
-an instruction the model obeys, with nothing behind it that *mechanically* knows who was
-speaking or how much has already been written.
+Observed while running this on real work. The first three share one root — the store is
+Markdown read at a model's discretion, and nothing enforces how it gets read. The next two
+share another: capture is an instruction the model obeys, with nothing behind it that knows
+who was speaking or how much has already been written.
 
-- **Analysis misreads what you meant — now gated, not gone.** The analysis pass turns raw
-  journal lines into candidates, and it used to take the wrong end of the stick often
-  enough to matter: the instead-of side swapped, a remark scoped to one file generalized
-  into a class of targets, a reason inferred that you would never have given. The span
-  discipline in `DETECTION.md` now requires every load-bearing part of a candidate — the
-  chosen side, the instead-of side, the scope qualifier — to trace to a verbatim quote in
-  its receipts; a part with no quote behind it is marked `inferred` and the question
-  confirms it instead of asserting it, and an undecidable direction is asked, never
-  guessed. The hole: the checker is the same model that wrote the candidate, so the
-  receipts and the review gate remain your backstop — they are just no longer the only one.
-- **The Except clauses used to be the least-read part of the store.** The full entry is
-  supposed to be read before writing code, and in practice the model worked off the
-  injected one-line index and skipped the file — so `Except` clauses, the very part that
-  keeps a tendency from misfiring, went unread. Two changes attack the cost asymmetry
-  rather than the discipline: the index line itself now carries each entry's Except
-  situations (`[N except: …]`), and `scripts/query.sh` returns topic, `observed-in` and
-  Excepts for a whole category in a few lines. The hole: Except *reasons* still live in
-  the file, and nothing mechanically forces even the cheap read — the usage log still
-  cannot say whether one happened.
-- **Reading the store used to mean `cat`ing whole files.** There is now a query —
-  `scripts/query.sh <root> [-c category] [-s slug] [-m text] [-f fields]` — with field
-  projection, so consulting a handful of entries costs lines instead of pages of
-  frontmatter and prose. The hole: calling it is still the model's choice; what changed is
-  that the correct path is no longer the expensive one.
-- **Human and agent steering are told apart by discipline, not by mechanism.** The whole
-  premise is that a human steered, but a subagent's prompt comes from its parent, a message
-  between sessions comes from another model, and the hook payload carries no author
-  identity. The journal duty now reserves "User" for the human, records non-human steering
-  with its author named (or `[author: unverified]`), and the analysis pass's zeroth gate
-  keeps such lines out of candidates and receipts. The hole: this is an instruction, and an
-  instruction can be disobeyed — until the harness hands hooks an author identity, receipts
-  from a session you did not personally drive still deserve a second look.
-- **How much gets recorded still depends on the harness.** Capture eagerness varies by
-  where it runs — the VS Code extension appears to journal more than the terminal CLI for
-  comparable work. The journal's provenance header now records a best-effort client
-  identity (`CLAUDE_CODE_ENTRYPOINT`, falling back to `TERM_PROGRAM`), which turns
-  "appears to" into something you can count across journals, and the duty now includes
-  one-event-one-line deduplication. The hole: there is still no counter and no rate limit
-  behind the duty; the variance is measurable now, not managed.
+- **Analysis misreads what you meant.** The analysis pass turns raw journal lines into
+  candidates, and it takes the wrong end of the stick often enough to matter — the
+  instead-of side swapped, a remark scoped to one file generalized into a class of targets,
+  a reason inferred that you would never have given. The receipts on the question and the
+  review gate are the only correction points, which leaves the whole burden of catching a
+  misreading on you. *Should be fixed at `e3d3ec2` (span discipline), but not verified yet.*
+- **The full entry is supposed to be read before writing code, and in practice is not.**
+  `SKILL.md` says to open `prefer/<slug>.md` first, and that entries flagged `[N except]`
+  *must* be read before use. Nothing enforces it, and in practice the model works off the
+  injected one-line index and skips the file — so `Except` clauses, the very part that
+  keeps a tendency from misfiring, are the least-read part of the store. The usage log
+  cannot measure this either: it records applied / excepted / overridden, not whether a
+  file was opened. *Should be fixed at `21e2afc` (Excepts ride in the index line;
+  `query.sh` makes the correct read the cheap one), but not verified yet.*
+- **Reading the store has no tooling and costs a lot of context.** There is no query — no
+  "give me this category's entries", no field projection. Reading one entry means `cat`ing
+  the whole file, so consulting a handful burns a large amount of context on frontmatter
+  and prose the task at hand does not need. That cost feeds the previous item: the cheap
+  path (the index, already in context) is always there, and the correct path (the file) is
+  the expensive one. *Should be fixed at `21e2afc` (`scripts/query.sh`), but not verified
+  yet.*
+- **Nothing tells human steering apart from another agent's.** The whole premise is that a
+  human steered — the journal's own line archetype begins with "User…" — but a subagent's
+  prompt comes from its parent, a message between sessions comes from another model, and the
+  hook payload carries no author identity. So cross-session and cross-subagent traffic (parent
+  to child, child to parent, sibling to sibling) lands in the journal as though you had said
+  it, and can reach a batch question whose receipts quote an AI rather than you. Until the
+  store records who was speaking, treat receipts from a session you did not personally drive
+  as suspect. *Should be fixed at `d05757b` (author discipline plus a zeroth analysis gate —
+  though it is discipline, not mechanism), but not verified yet.*
+- **How much gets recorded depends on the harness, not on how much you steered.** The duty is
+  one line of injected text that the model obeys; there is no counter, no rate limit and no
+  write-time deduplication behind it, so eagerness varies by where it runs — the VS Code
+  extension appears to journal more than the terminal CLI for comparable work. It is also
+  unmeasurable from the store itself: the provenance header carries session, repo, staging root
+  and start time, and no client identity. So this stays an impression, not a number.
+  *Partially fixed at `d05757b` (client identity in the provenance header makes it
+  measurable; one-event-one-line dedup), but not verified yet — and there is still no
+  counter or rate limit.*
 - **The Codex half is verified against the contract, not against a live Codex.** Its
   documented hook events, stdin fields and output schema match Claude Code's, and the hooks
   were exercised end to end against that contract — but on a machine with the Codex CLI
