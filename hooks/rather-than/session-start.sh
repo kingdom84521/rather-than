@@ -34,7 +34,19 @@ state_team="$state_base/team-$repo_key"
 state_project="$state_base/project-$repo_key"
 
 
-mkdir -p "$personal/prefer" "$personal/journal" "$teamlocal/prefer" "$state_base/sessions" "$state_personal" "$state_team"
+mkdir -p "$personal/prefer" "$personal/journal" "$teamlocal/prefer" "$state_base/sessions" "$state_base/activity" "$state_personal" "$state_team"
+
+# Mark today active (activation ages count active days, not calendar days —
+# time away must not decay the store) and prune ancient markers.
+touch "$state_base/activity/$(date +%Y-%m-%d)" 2>/dev/null || true
+find "$state_base/activity" -mtime +400 -delete 2>/dev/null || true
+
+# Seed the usage baseline the Stop hook's reconciliation check compares against.
+usz=0
+for u in "$state_personal/usage.log" "$state_team/usage.log" "$state_project/usage.log"; do
+  [ -f "$u" ] && usz=$((usz + $(wc -c < "$u")))
+done
+printf '%s' "$usz" > "$state_base/sessions/$sid.usize" 2>/dev/null || true
 
 journal="$personal/journal/$sid.md"
 if [ ! -f "$journal" ]; then

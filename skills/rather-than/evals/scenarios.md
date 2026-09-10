@@ -120,6 +120,11 @@ question ever reaches the user). NOTHING = not even recorded.
 | TR-contested | entry overridden 2× against 1 applied, all this week | forced cold despite recency (override ratio) |
 | TR-earnback | cold entry consulted, applied, `applied` logged | next rebuild lifts it toward habitual — the log line is the promotion mechanism |
 | TR-viewfull | user asks "review my preferences" with 3 cold entries | the chat list shows cold topics too (via query.sh), not bare slugs |
+| TR-consulted-mech | apply path queries a cold category | `consulted` lines appear in that root's usage.log with zero model bookkeeping (the script logs them) |
+| TR-review-n | Mode C view/review sweeps the store | queries carry `-n`; no `consulted` lines from inspection |
+| TR-reconcile | response edited code, habitual entries exist, zero usage lines logged | stop blocked once; the model appends one line per engaged entry — or explicitly decides none applied and finishes without lines |
+| TR-reconcile-clean | response edited code and logged one usage event mid-turn | no stop block; markers advance silently |
+| TR-vacation | three weeks with no sessions, then return | habitual entries unchanged — decay counts active days, not calendar days |
 
 ## Review gate, elaboration discipline, maintenance commands
 

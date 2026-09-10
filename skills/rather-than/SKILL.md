@@ -69,7 +69,10 @@ force it cold; without a state dir the script falls back to a flat list).
 Read entries with `scripts/query.sh <root> [-c <category>] [-s <slug>]
 [-m <text>] [-f <fields>]` — field projection instead of whole-file reads;
 the default projection (topic, observed-in, Except) is exactly what the
-apply path needs, a few lines per entry.
+apply path needs, a few lines per entry. Every printed entry logs a
+`consulted` usage event mechanically (the script ran, so the retrieval
+happened); pass `-n` on maintenance reads — Mode C view/review, audits —
+so inspection does not count as use.
 
 ### Write rules
 
@@ -151,9 +154,17 @@ the skill state dir (paths given in the injected context):
 One bash append per event — and no longer merely best-effort: these
 events are what drive the index tiers. `applied` and `excepted`
 strengthen an entry toward (and keep it in) the always-on `habitual`
-tier, disuse decays it back to `cold`, and two or more `overridden`
-events making up half the outcomes force it cold regardless of recency —
-so a missed line now weakens injection, not just promotion statistics.
+tier, `consulted` events (logged by `query.sh` itself, no bookkeeping
+duty) do the same more weakly, disuse decays it back to `cold`, and two
+or more `overridden` events making up half the outcomes force it cold
+regardless of recency — so a missed line now weakens injection, not just
+promotion statistics. Decay is counted in active days (the hooks mark
+each day the store is used), so time away does not cool the store. Two
+safety nets catch forgotten logging: the mechanical `consulted` lines,
+and the Stop hook, which blocks once (rate-limited) when a response
+edited files while zero usage events were logged — reconcile then: one
+line per habitual entry the work actually engaged, none for the rest,
+and finishing with no lines is a legitimate answer when nothing applied.
 The same counts feed the promotion gates (PROMOTE.md); `applied` is weak
 evidence (relevance, not endorsement), user-confirmed Evidence is strong
 evidence, and a high overridden ratio is counter-evidence.
@@ -425,16 +436,17 @@ that carries them.
 ## Mode C — view and maintain
 
 **View** → answer from the injected index, filling in cold entries'
-topics with `scripts/query.sh` (the injected cold tier carries slugs
-only). Read individual files only for entries the user actually asked
-about. Do not recite the whole store.
+topics with `scripts/query.sh -n` (the injected cold tier carries slugs
+only; `-n` because inspection is not use). Read individual files only
+for entries the user actually asked about. Do not recite the whole
+store.
 
 **Delete** → confirm the scope, remove `prefer/<slug>.md`, rebuild the
 index. Deletion means deletion; do not rewrite the entry as a former
 preference.
 
 **Review** (user asks to review preferences) → list all entries from the
-injected index (cold topics via `query.sh`), numbered and grouped by
+injected index (cold topics via `query.sh -n`), numbered and grouped by
 category, in chat (a plain list — AskUserQuestion cannot hold a whole
 store). The user names one; translate
 that single entry into `<store>/REVIEW.md` per

@@ -5,11 +5,18 @@
 # ("habitual") status through use, scored ACT-R-style — each event contributes
 # weight/age^0.5 (power-law decay), so recency and frequency raise an entry and
 # disuse sinks it back. Events and weights: user-confirmed Evidence 2.0,
-# usage.log applied 1.0, excepted 0.5, created 0.3. Habitual needs a score >= 1
-# and a seat within RATHER_THAN_HABIT_MAX (default 15); 2+ overridden events
-# making up half or more of the outcomes force an entry cold regardless.
-# Everything else lists cold — category, count, slugs — to be consulted via
-# query.sh when the work touches it. Without a state dir: the flat list.
+# usage.log applied 1.0, excepted 0.5, consulted 0.3 (query.sh logs these
+# itself — retrieval is what activation counts), created 0.3. Habitual needs a
+# score >= 1 and a seat within RATHER_THAN_HABIT_MAX (default 15); 2+
+# overridden events making up half or more of the outcomes force an entry cold
+# regardless. Everything else lists cold — category, count, slugs — to be
+# consulted via query.sh when the work touches it. Without a state dir: the
+# flat list.
+#
+# Age is counted in ACTIVE days (the .state/activity/ markers the hooks touch),
+# not calendar days: habits decay with missed opportunities to practice, not
+# with time away — three weeks of vacation should not cool the store. Falls
+# back to calendar days when no markers exist.
 set -euo pipefail
 export LC_NUMERIC=C  # decimal points, not commas — the scores are sorted with -g
 
@@ -30,6 +37,7 @@ activation() { # <file> <slug> → "score applied overridden"
       awk -v s="$slug" '
         $2==s && $3=="applied"{print $1, 1.0}
         $2==s && $3=="excepted"{print $1, 0.5}
+        $2==s && $3=="consulted"{print $1, 0.3}
         $2==s && $3=="overridden"{print $1, "O"}' "$state/usage.log"
     fi
   } | awk -v today="$today" '
@@ -38,15 +46,33 @@ activation() { # <file> <slug> → "score applied overridden"
       return d + int((153 * mm + 2) / 5) + 365 * yy + int(yy / 4) - int(yy / 100) + int(yy / 400) - 32045
     }
     function datejdn(s,  p) { split(s, p, "-"); return jdn(p[1] + 0, p[2] + 0, p[3] + 0) }
+    # Age in active days: how many recorded-active dates fall after the event.
+    # No markers at all -> calendar days (fresh installs, manual rebuilds).
+    function agedays(ej,  i, c) {
+      if (an == 0) return tj - ej
+      c = 0
+      for (i = 1; i <= an; i++) if (aj[i] > ej && aj[i] <= tj) c++
+      return c
+    }
     BEGIN { tj = datejdn(today) }
+    FILENAME != "-" {
+      if ($1 ~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/) aj[++an] = datejdn($1)
+      next
+    }
     $1 !~ /^[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]$/ { next }
     $2 == "O" { o++; next }
-    { age = tj - datejdn($1); if (age < 1) age = 1; S += $2 * age ^ -0.5; if ($2 == 1.0) a++ }
-    END { printf "%.4f %d %d\n", S + 0, a + 0, o + 0 }'
+    { age = agedays(datejdn($1)); if (age < 1) age = 1; S += $2 * age ^ -0.5; if ($2 == 1.0) a++ }
+    END { printf "%.4f %d %d\n", S + 0, a + 0, o + 0 }' "$act_file" -
 }
 
 records="$(mktemp)"
-trap 'rm -f "$records" "$tmp"' EXIT
+act_file="$(mktemp)"
+trap 'rm -f "$records" "$act_file" "$tmp"' EXIT
+
+# Active-day markers live beside the state dirs, shared by every root.
+if [ -n "$state" ] && [ -d "$(dirname "$state")/activity" ]; then
+  ls -1 "$(dirname "$state")/activity" 2>/dev/null | sort > "$act_file" || true
+fi
 
 if [ -d "$prefer" ]; then
   for f in "$prefer"/*.md; do

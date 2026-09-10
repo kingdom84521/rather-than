@@ -49,8 +49,10 @@ rebuild_if_stale() {
   fi
 }
 
-mkdir -p "$state_base/sessions"
+mkdir -p "$state_base/sessions" "$state_base/activity"
 touch "$state_base/sessions/$sid.alive" 2>/dev/null || true
+# A long-running session spans days; each prompt marks its day active.
+touch "$state_base/activity/$(date +%Y-%m-%d)" 2>/dev/null || true
 
 rebuild_if_stale "$personal" "$state_personal"
 rebuild_if_stale "$teamlocal" "$state_team"

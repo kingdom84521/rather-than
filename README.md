@@ -216,9 +216,9 @@ Three parts.
 
 | Hook | Event | What it does |
 |---|---|---|
-| `session-start.sh` | SessionStart | Creates the store if absent, opens this session's journal with a provenance header, rebuilds a stale index, and injects the store index plus every path this session needs |
-| `prompt.sh` | UserPromptSubmit | Re-states the one-sentence journal duty each turn, keeps the session's liveness marker fresh, and — only when the store changed since this session last read it, typically under a concurrent session — injects the changed index lines rather than the whole index |
-| `stop.sh` | Stop | When confirmed entries are waiting, blocks the stop once (rate-limited to once per 30 min per session) so consolidation happens at a natural break point instead of never |
+| `session-start.sh` | SessionStart | Creates the store if absent, opens this session's journal with a provenance header, rebuilds a stale index, marks the day active, seeds the usage baseline, and injects the store index plus every path this session needs |
+| `prompt.sh` | UserPromptSubmit | Re-states the one-sentence journal duty each turn, keeps the session's liveness and the day's activity markers fresh, and — only when the store changed since this session last read it, typically under a concurrent session — injects the changed index lines rather than the whole index |
+| `stop.sh` | Stop | When confirmed entries are waiting, blocks the stop once (rate-limited to once per 30 min per session) so consolidation happens at a natural break point instead of never; likewise blocks once when the response edited files while zero usage events were logged, so tier bookkeeping gets its moment at the break point too |
 
 **The skill** — `SKILL.md` and `references/`, holding the judgment: what counts as a
 preference signal, what gets filtered out, how a question must be asked, how two entries
@@ -396,6 +396,12 @@ who was speaking or how much has already been written.
   (slugs)` only and are consulted via `query.sh` when the work touches them. The habitual
   tier is capped at `RATHER_THAN_HABIT_MAX` (default 15), and the hooks refresh the index
   daily so decay happens with time, not only with writes.
+- The usage ledger does not depend on the model remembering to write it: `query.sh` logs
+  every printed entry as a `consulted` event itself (pass `-n` for maintenance reads that
+  must not count as use), and the Stop hook forces a reconciliation moment when a response
+  edited files with zero usage lines. Decay is also counted in *active days* — the hooks
+  mark each day the store is used — so three weeks away cools nothing: habits fade with
+  missed opportunities to practice, not with the calendar.
 - `skills/rather-than/scripts/query.sh <root>` is the cheap read path: `-c` filters by
   category, `-s` selects slugs, `-m` matches text, `-f` projects fields — the default
   projection (topic, `observed-in`, Except) is what applying a tendency needs.

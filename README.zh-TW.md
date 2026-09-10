@@ -200,9 +200,9 @@ store 與判斷邏輯本來就與 agent 無關；只有自動化那層需要 hoo
 
 | Hook | 事件 | 做什麼 |
 |---|---|---|
-| `session-start.sh` | SessionStart | store 不存在就建起來、開一份帶來源標頭的本 session journal、索引過期就重建，並把 store 索引與這個 session 需要的所有路徑注入 |
-| `prompt.sh` | UserPromptSubmit | 每個 turn 重述那一句 journal 義務、更新 session 的存活標記；只有在 store 自本 session 上次讀過之後有變動時（通常是另一個 session 併行改動）才注入變動的索引行，而不是整份索引 |
-| `stop.sh` | Stop | 有已確認條目在等著整併時，攔下這次停止一次（每個 session 每 30 分鐘最多一次），讓整併發生在自然的段落，而不是永遠不發生 |
+| `session-start.sh` | SessionStart | store 不存在就建起來、開一份帶來源標頭的本 session journal、索引過期就重建、把今天標記為活躍日、記下 usage 基準線，並把 store 索引與這個 session 需要的所有路徑注入 |
+| `prompt.sh` | UserPromptSubmit | 每個 turn 重述那一句 journal 義務、更新 session 的存活標記與當天的活躍標記；只有在 store 自本 session 上次讀過之後有變動時（通常是另一個 session 併行改動）才注入變動的索引行，而不是整份索引 |
+| `stop.sh` | Stop | 有已確認條目在等著整併時，攔下這次停止一次（每個 session 每 30 分鐘最多一次），讓整併發生在自然的段落，而不是永遠不發生；同樣地，當這次回應改了檔案卻一筆 usage 事件都沒記時也攔一次，讓層級簿記在斷點被逼著發生 |
 
 **Skill** —— `SKILL.md` 與 `references/`，承載所有判斷：什麼算偏好訊號、什麼該被濾掉、
 一個問題要怎麼問才算問得起、兩個條目要怎麼合併。
@@ -358,6 +358,11 @@ store 是 Markdown，讀不讀、怎麼讀，全憑模型自己斟酌，沒有�
   cold 條目只以「分類：數量（slug）」注入，工作碰到時再用 `query.sh` 查。
   habitual 層有上限（`RATHER_THAN_HABIT_MAX`，預設 15），hook 每天會重刷一次索引，
   讓衰減跟著時間走，而不是只跟著寫入走。
+- usage 這本帳不靠模型記得去寫：`query.sh` 每印出一筆條目就自己記一筆 `consulted`
+  事件（維護型讀取加 `-n`，檢視不算使用），而 Stop hook 會在「這次回應改了檔案、
+  usage 卻零成長」時強制一個對帳時刻。衰減也改以**活躍天**計算 —— hook 會把
+  store 被使用的每一天標記下來 —— 所以出門三週回來什麼都不會冷掉：
+  習慣是因為錯過練習的機會而消退的，不是因為日曆翻頁。
 - `skills/rather-than/scripts/query.sh <root>` 是便宜的讀取路徑：`-c` 篩分類、
   `-s` 選 slug、`-m` 比對文字、`-f` 投影欄位 —— 預設投影
   （topic、`observed-in`、Except）正是套用一個傾向時需要的東西。
