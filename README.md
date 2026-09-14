@@ -128,7 +128,30 @@ and all three hooks, and each agent's own plugin system registers them. You edit
 
 To preview first, run `npx plugins discover kingdom84521/rather-than`. It should report
 `rather-than  1 skill, hooks`. To install to one agent only, add `-t claude-code` or
-`-t codex`. To update, run the same install command again.
+`-t codex`. To update, run the same install command again — and see "Updating" below.
+
+</details>
+
+<details>
+<summary><strong>Updating — and migrating the store</strong></summary>
+
+Run the install command again, then start a session. If your store's layout is older
+than the new version expects, the session context says so in one line and names the
+command to run:
+
+```bash
+bash <plugin>/skills/rather-than/scripts/init.sh        # plan: what would change; nothing is written
+bash <plugin>/skills/rather-than/scripts/init.sh --yes  # apply, after a backup under <store>/.state/backups/
+```
+
+You can run it yourself or ask the agent to. Each change to the store's layout ships as
+a numbered file under `skills/rather-than/migrations/`, written in the commit that made
+the change. `init` only works out which of them your store still needs — from the marker
+at `<store>/.state/schema` — and runs them in order. Running it twice is safe: the second
+run finds nothing to do. It also reports leftovers from an older install route (a skill
+copy under `~/.claude/skills/` while the plugin route is active, hand-registered hooks
+that would fire twice) and removes the safe ones with `--prune`. It never edits
+`settings.json`.
 
 </details>
 
@@ -215,7 +238,7 @@ Three parts.
 
 | Hook | Event | What it does |
 |---|---|---|
-| `session-start.sh` | SessionStart | Creates the store if missing, opens this session's journal with a provenance header, rebuilds the index if stale, marks today as an active day, records the usage baseline, and injects the index plus every path the session needs |
+| `session-start.sh` | SessionStart | Creates the store if missing (stamped with the current schema), opens this session's journal with a provenance header, rebuilds the index if stale, marks today as an active day, records the usage baseline, says so when the store's layout is behind the plugin, and injects the index plus every path the session needs |
 | `prompt.sh` | UserPromptSubmit | Repeats the one-sentence journal duty, refreshes the session's liveness marker and today's activity marker, and injects index changes — only when another session changed the store since this one last read it |
 | `stop.sh` | Stop | Blocks the stop once (at most once per 30 minutes per session) when confirmed entries are waiting, so consolidation happens at a break point instead of never. Also blocks once when the response edited files but logged no usage events, so the usage ledger gets reconciled at the break point too |
 
@@ -233,7 +256,8 @@ entries merge.
 ├── deferred/<slug>.md    # candidates you postponed, with receipts kept
 ├── ignore.md             # topics you opted out of
 ├── REVIEW.md             # the one pending change awaiting your approval
-└── team/<repo-key>/      # team-scope staging, per repository
+├── team/<repo-key>/      # team-scope staging, per repository
+└── .state/               # locks, usage logs, active-day markers, schema marker
 ```
 
 The store location is resolved at runtime, in this order: `$RATHER_THAN_HOME` if you set
@@ -407,6 +431,14 @@ that knows who was speaking or how much was already written.
 - `skills/rather-than/scripts/query.sh <root>` is the cheap way to read entries: `-c`
   filters by category, `-s` picks slugs, `-m` matches text, `-f` picks fields. The
   default output (topic, `observed-in`, Except) is what applying a tendency needs.
+- The store has a schema. `<store>/.state/schema` holds the id of the last layout
+  migration applied; `skills/rather-than/migrations/` holds every migration — one file per
+  layout change, written in the commit that made it — plus the ledger that maps them to
+  commits. `scripts/init.sh` plans and applies the ones a store still needs. What file
+  work cannot do (re-reading journals written before the author rule, restoring spans a
+  candidate never recorded) is written down as a rule instead — DETECTION.md's
+  legacy-journal rule, `inferred` spans confirmed by the question — never guessed by a
+  script.
 - The plugin uses the vendor-neutral open-plugin format. `.plugin/plugin.json` declares
   `hooks/hooks.json`, whose commands use `${PLUGIN_ROOT}`. At install time, the plugin CLI
   rewrites that variable to each agent's own name (`CLAUDE_PLUGIN_ROOT` and friends) — and

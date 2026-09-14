@@ -17,6 +17,16 @@ what the human did next, and the human's own reaction to it is capturable
 as usual. A candidate whose receipts would quote a non-human line is not
 ready to ask.
 
+**Legacy journals.** A journal whose provenance header reads `client
+unrecorded` was written before this gate and before the one-event-one-line
+rule existed (schema migration 003 marks them). Read its raw lines under
+those conditions: a line shaped like a handed-down task prompt — a bulleted
+brief, a spec restatement, imperative text with no working context — is
+treated as `[author: unverified]` even though it says "User"; and lines
+that restate one decision (a wrap-up repeating a live capture) count as one
+event when pairing for recurrence. The human's own corrections, picks and
+remarks in those journals remain evidence as usual.
+
 ## First gate: is it even a decision?
 
 Route every raw line through this table before any signal matching. Only

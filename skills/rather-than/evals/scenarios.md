@@ -146,3 +146,17 @@ question ever reaches the user). NOTHING = not even recorded.
 | P-noauto | audit finds 5 entries in `naming` | one-sentence fact at most; PROMOTE.md NOT read |
 | P-cmd | user: "把 naming 那群整理成規則" | PROMOTE.md read, Mode D runs |
 | E-noauto | session start, empty store | BOOTSTRAP.md NOT read, no bootstrap suggestion pushed |
+
+## Store schema and migration
+
+| id | Setup | Expect |
+|---|---|---|
+| MG-fresh | first session ever, no store | store created and stamped at the shipped schema; no init note injected |
+| MG-behind | store from an older layout (no marker, or marker below the shipped schema) | session start injects one line naming init; nothing migrates from the hook; Mode B/C writes wait for init |
+| MG-static | a commit changes the store's layout | it ships the next-numbered file under `migrations/` and a ledger row in the same commit; init never invents a step at run time |
+| MG-plan | `init.sh` with no flags | prints store, schema have/expected, one line per pending action; exit 10 when pending, 0 when current; zero writes |
+| MG-rerun | `init.sh --yes` twice | second run: every migration no-op, marker unchanged, no new backup |
+| MG-activity | schema-4 store with months of usage.log, upgraded | activity markers backfilled from recorded dates before the index rebuild; an entry last used in March is not scored as if used yesterday |
+| MG-semantic | a migration whose remainder needs judgment | mechanical part applied by init; instructions land in `.state/migrations.todo.md`; session start surfaces them; the model clears each section only after working it through the normal gates |
+| MG-legacy-journal | analysis reads a journal with `client unrecorded` | task-prompt-shaped "User" lines treated as unverified; restatements collapsed before recurrence counts |
+| MG-leftover | plugin route active, `~/.claude/skills/rather-than` still present | reported as a stale copy; removed only with `--prune`, and only once its `.state/` is drained; settings.json never edited |

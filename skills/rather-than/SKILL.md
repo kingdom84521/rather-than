@@ -56,6 +56,18 @@ lives in one place outside the roots, at `<store>/.state/`, so an
 agent or plugin update cannot take it with it. The injected session context names
 every state dir; use those paths.
 
+The store also carries a **schema marker**, `<store>/.state/schema`: the id
+of the last layout migration applied. Every change to the store's layout
+since the first commit ships as a numbered file under this skill's
+`migrations/` (its README is the ledger), written in the commit that made
+the change — never worked out at run time. When the injected context reports
+the schema behind the plugin, run `scripts/init.sh` first: no flags prints
+the plan, `--yes` applies it after a backup. Do this before any Mode B or
+Mode C write, and never migrate by hand. A migration whose remainder needs
+judgment rather than file work leaves its instructions in
+`<store>/.state/migrations.todo.md`; work each section through the normal
+gates at the next Mode B and delete it when done.
+
 `<sid>` comes from the injected session context. If absent, generate one with
 `date +%Y%m%dT%H%M%S`-`$RANDOM` and reuse it for the whole session.
 
@@ -171,6 +183,9 @@ evidence, and a high overridden ratio is counter-evidence.
 
 ## Mode selection
 
+- Injected context reports the store schema behind the plugin, or semantic
+  migration steps waiting → run `scripts/init.sh` (plan, then `--yes`) and
+  work `migrations.todo.md` first; every other mode waits
 - Injected context reports journal entries pending consolidation, or the
   user asks to tidy up preferences → **Mode B**
 - User wants to view, edit, or delete entries → **Mode C**

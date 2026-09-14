@@ -117,7 +117,29 @@ skill 和三個 hook，由各 agent 自己的 plugin 系統註冊。你不用改
 
 想先看會裝什麼，跑 `npx plugins discover kingdom84521/rather-than`，
 它應該回報 `rather-than  1 skill, hooks`。只想裝在一個 agent，
-加 `-t claude-code` 或 `-t codex`。要更新，把同一道指令再跑一次。
+加 `-t claude-code` 或 `-t codex`。要更新，把同一道指令再跑一次——
+然後看下面的「更新」。
+
+</details>
+
+<details>
+<summary><strong>更新 —— 順便把 store 遷移過來</strong></summary>
+
+把安裝指令再跑一次，然後開一個新 session。如果你的 store 版面比新版預期的舊，
+session context 會用一行告訴你，並寫出要跑的指令：
+
+```bash
+bash <plugin>/skills/rather-than/scripts/init.sh        # 只列計畫：會改什麼；什麼都不寫
+bash <plugin>/skills/rather-than/scripts/init.sh --yes  # 套用；先備份到 <store>/.state/backups/
+```
+
+你可以自己跑，也可以叫 agent 跑。store 版面每改一次，就在
+`skills/rather-than/migrations/` 多一個編號檔，和改版面的那個 commit 一起寫好。
+`init` 只做兩件事：從 `<store>/.state/schema` 這個標記算出你的 store 還缺哪幾個，
+然後按順序跑。跑兩次是安全的，第二次會發現沒事可做。它也會回報舊安裝路線
+留下的東西（plugin 路線已生效時還留在 `~/.claude/skills/` 的 skill 副本、
+會重複觸發的手動註冊 hook），安全的那些加 `--prune` 就會清掉。
+它永遠不動 `settings.json`。
 
 </details>
 
@@ -203,7 +225,7 @@ store 和判斷邏輯在任何 agent 上都能用；只有自動化那層需要 
 
 | Hook | 事件 | 做什麼 |
 |---|---|---|
-| `session-start.sh` | SessionStart | store 不存在就建立、開一份帶來源標頭的 journal、索引過期就重建、把今天標成活躍日、記下 usage 基準線，然後注入索引和這場 session 需要的所有路徑 |
+| `session-start.sh` | SessionStart | store 不存在就建立（並蓋上目前的 schema 版本）、開一份帶來源標頭的 journal、索引過期就重建、把今天標成活躍日、記下 usage 基準線、store 版面落後 plugin 時說一聲，然後注入索引和這場 session 需要的所有路徑 |
 | `prompt.sh` | UserPromptSubmit | 每回合重述那一句記錄義務、更新 session 存活標記和當天的活躍標記；只有別的 session 改過 store 時，才注入變動的索引行 |
 | `stop.sh` | Stop | 有已確認的條目在等整併時，攔下這次結束一次（每 session 每 30 分鐘最多一次），讓整併在段落發生，而不是永遠不發生。同樣地，這次回應改了檔案卻一筆 usage 都沒記時，也攔一次，讓帳在段落被補上 |
 
@@ -220,7 +242,8 @@ store 和判斷邏輯在任何 agent 上都能用；只有自動化那層需要 
 ├── deferred/<slug>.md    # 你按過「暫緩」的候選，證據完整保留
 ├── ignore.md             # 你選擇不追蹤的主題
 ├── REVIEW.md             # 正在等你確認的那一筆變更
-└── team/<repo-key>/      # team 範圍的本機暫存區，一個 repo 一份
+├── team/<repo-key>/      # team 範圍的本機暫存區，一個 repo 一份
+└── .state/               # 鎖、usage 帳、活躍日標記、schema 標記
 ```
 
 store 的位置在執行時決定，順序是：你設了 `$RATHER_THAN_HOME` 就用它；
@@ -376,6 +399,13 @@ context。
 - `skills/rather-than/scripts/query.sh <root>` 是便宜的讀取方式：
   `-c` 篩分類、`-s` 選 slug、`-m` 比對文字、`-f` 挑欄位。
   預設輸出（topic、`observed-in`、Except）正是套用傾向時需要的三樣東西。
+- store 有版本。`<store>/.state/schema` 記著最後套用的版面 migration 編號；
+  `skills/rather-than/migrations/` 收著每一個 migration——版面每改一次一個檔，
+  和改版面的那個 commit 一起寫好——還有對應到 commit 的帳本。
+  `scripts/init.sh` 負責算出某個 store 還缺哪些，然後套用。
+  檔案操作做不到的事（重讀 author 規則之前寫的 journal、補回候選當初沒記的
+  span）寫成規則——DETECTION.md 的 legacy-journal 規則、`inferred` 的 span
+  交給提問確認——不讓 script 猜。
 - 這個 plugin 用 vendor 中立的 open-plugin 格式寫成。`.plugin/plugin.json`
   宣告 `hooks/hooks.json`，裡面的指令用 `${PLUGIN_ROOT}`。安裝時 plugin CLI
   把這個變數改寫成各家自己的名字（例如 `CLAUDE_PLUGIN_ROOT`）——

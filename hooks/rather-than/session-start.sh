@@ -20,6 +20,7 @@ sid="$(get_field session_id)"; [ -n "$sid" ] || sid="unknown-$$"
 cwd="$(get_field cwd)"; [ -n "$cwd" ] || cwd="$PWD"
 
 skill_scripts="$(rt_skill_scripts)"
+skill_root="${skill_scripts%/scripts}"
 # Resolve repo identity: git root if available, else cwd.
 repo_root="$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null || true)"
 [ -n "$repo_root" ] || repo_root="$cwd"
@@ -34,7 +35,29 @@ state_team="$state_base/team-$repo_key"
 state_project="$state_base/project-$repo_key"
 
 
+# A store is fresh when this run creates it; an existing store keeps its schema.
+fresh=0; [ -d "$personal/prefer" ] || fresh=1
 mkdir -p "$personal/prefer" "$personal/journal" "$teamlocal/prefer" "$state_base/sessions" "$state_base/activity" "$state_personal" "$state_team"
+
+# Store schema: every change to the store's layout ships as a numbered file
+# under the skill's migrations/, and .state/schema records the last one
+# applied. A store created here starts at the newest; an older store gets
+# one line asking for init. The hook never migrates anything itself.
+schema_note=""
+schema_latest="$(ls "$skill_root/migrations"/[0-9][0-9][0-9]-*.sh 2>/dev/null | sed 's#.*/\([0-9][0-9][0-9]\)-.*#\1#' | sort -n | tail -n 1)"
+if [ -n "$schema_latest" ]; then
+  schema_latest=$((10#$schema_latest))
+  schema_have="$(cat "$state_base/schema" 2>/dev/null || echo 0)"
+  case "$schema_have" in ''|*[!0-9]*) schema_have=0 ;; esac
+  if [ "$fresh" = 1 ] && [ ! -f "$state_base/schema" ]; then
+    printf '%s' "$schema_latest" > "$state_base/schema" 2>/dev/null || true
+  elif [ "$schema_have" -lt "$schema_latest" ]; then
+    schema_note="Store schema is $schema_have; this plugin ships $schema_latest. The pending migrations are recorded under $skill_root/migrations/ — plan with bash \"$skill_scripts/init.sh\", apply with --yes (a backup is taken first). Run it before any Mode B or Mode C write; the tiers below may be off until then."
+  fi
+  if [ -s "$state_base/migrations.todo.md" ]; then
+    schema_note="$schema_note${schema_note:+ }Semantic migration steps await in $state_base/migrations.todo.md — work each section through the normal gates at the next Mode B and delete it when done."
+  fi
+fi
 
 # Mark today active (activation ages count active days, not calendar days —
 # time away must not decay the store) and prune ancient markers.
@@ -120,6 +143,7 @@ rebuild_if_stale "$teamlocal" "$state_team"
 ctx="$(
   echo "rather-than session context. Session id: $sid. Journal for this session (all raw lines and confirmed blocks, provenance header inside): $personal/journal/$sid.md. Team-scope root (local staging, not committed): $teamlocal. Project root (published): $project."
   echo "State dirs (usage.log, usage-summary.md, consolidation lock per root): personal $state_personal, team $state_team, project $state_project."
+  [ -n "$schema_note" ] && echo "$schema_note"
   echo
   echo "The rather-than skill tracks the user's coding preferences as tendencies. Journal duty (every turn): whenever the user steers anything — a directive (plain tasks included), a correction of earlier output, an evaluative remark in passing, a pick among offered options, process steering — or a consistent codebase pattern is noticed, append one natural English sentence to this session's journal, capturing what was chosen instead of what (the rejected side evaporates after the turn), any stated reason, and what was being worked on. Dirty is fine; skip only pure information questions. 'User' in a raw line is reserved for the human: steering that arrives from another model (a parent agent's task prompt, a cross-session message) is recorded with its actual author named, or tagged [author: unverified] when the channel is unclear — analysis never turns non-human steering into a preference. Analysis happens later in batches, never mid-task."
   echo "The indexes below are activation-tiered. 'habitual' entries have earned always-on status through use — apply them within their observed-in contexts; each line carries its Except situations, flagged [N except: …], and never apply an excepted entry without its Excepts in view. 'cold' lines list only category: count (slugs) — cold entries are NOT active constraints: when the current work touches a cold category, consult it first with bash \"$skill_scripts/query.sh\" <root> -c <category> (default projection: topic, observed-in, Except; -s <slug> and -f <fields> also work); applying a cold entry unconsulted is a misfire. Use moves entries between tiers: applied/excepted/overridden events logged to the state-dir usage.log are what promote, demote, and decay entries, so a missed log line now also weakens injection. Full files at <root>/prefer/<slug>.md hold Except reasons and evidence. Tendencies never block the user. The skill's Mode A covers capture, Mode B consolidation."
