@@ -125,21 +125,52 @@ skill 和三個 hook，由各 agent 自己的 plugin 系統註冊。你不用改
 <details>
 <summary><strong>更新 —— 順便把 store 遷移過來</strong></summary>
 
-把安裝指令再跑一次，然後開一個新 session。如果你的 store 版面比新版預期的舊，
-session context 會用一行告訴你，並寫出要跑的指令：
+**更新 plugin。** 把安裝指令再跑一次：
 
 ```bash
-bash <plugin>/skills/rather-than/scripts/init.sh        # 只列計畫：會改什麼；什麼都不寫
+npx plugins add kingdom84521/rather-than -t claude-code
+```
+
+沒有 `npx plugins update` 這個指令。這個 CLI 會把不認識的字當成 repo 路徑，
+然後印出 `No plugins found.`。新版會放在
+`~/.claude/plugins/cache/kingdom84521-rather-than/rather-than/<commit>/`；
+舊 commit 的目錄會留在旁邊，可以刪掉。
+
+**遷移 store。** 開一個新 session。如果你的 store 比新版預期的舊，session context
+會用一行告訴你，並寫出下面這個指令的完整路徑。你可以自己跑，也可以叫 agent 跑：
+
+```bash
+bash <plugin>/skills/rather-than/scripts/init.sh        # 只列計畫：會改什麼，什麼都不寫
 bash <plugin>/skills/rather-than/scripts/init.sh --yes  # 套用；先備份到 <store>/.state/backups/
 ```
 
-你可以自己跑，也可以叫 agent 跑。store 版面每改一次，就在
-`skills/rather-than/migrations/` 多一個編號檔，和改版面的那個 commit 一起寫好。
-`init` 只做兩件事：從 `<store>/.state/schema` 這個標記算出你的 store 還缺哪幾個，
-然後按順序跑。跑兩次是安全的，第二次會發現沒事可做。它也會回報舊安裝路線
-留下的東西（plugin 路線已生效時還留在 `~/.claude/skills/` 的 skill 副本、
-會重複觸發的手動註冊 hook），安全的那些加 `--prune` 就會清掉。
-它永遠不動 `settings.json`。
+store 版面每改一次，就在 `skills/rather-than/migrations/` 多一個編號檔，
+和改版面的那個 commit 一起寫好。`init` 讀 `<store>/.state/schema` 這個標記，
+挑出你的 store 還缺的那幾個，按順序跑。跑兩次是安全的，第二次會發現沒事可做。
+
+計畫怎麼看：`move` 是舊檔在新位置沒有對應，直接搬；`merge` 是兩邊都有，
+把舊 log 缺的行補進去；`park` 是兩邊都有，舊的那份放到 `.state/legacy-conflicts/`
+保留。回填的天數，是 hook 開始做記號之前、store 實際被用到的天數。
+
+**從舊的「只給 Claude 用」的裝法過來**（複製到 `~/.claude/skills/` 和
+`~/.claude/hooks/`、在 `settings.json` 手動加三筆的那種）：順序很重要，
+因為舊 hook 只要還註冊著，就會繼續把狀態寫回舊位置。
+
+1. 關掉這台機器上所有 Claude Code session。
+2. 跑 `init.sh --yes`。migration 001 會把舊的使用紀錄從
+   `~/.claude/skills/rather-than/.state/` 搬出來。
+3. 把 `~/.claude/settings.json` 裡三筆 `hooks/rather-than/` 的項目刪掉。
+   `init` 會印一行 `jq` 指令給你；它自己永遠不動這個檔。
+4. 跑 `init.sh --yes --prune`。這會刪掉舊的 skill 副本；舊 hook 檔在沒有人引用之後
+   也會一併刪掉。
+5. 開新 session。`/hooks` 應該只在 plugin 名下列出三個 hook，
+   `Store schema` 那行也不該再出現。
+
+**遷移完之後，沒有要你手動做的事。** 兩件 script 做不到的改動改由規則處理：
+舊的候選 block 被標成 `inferred`，下一次提問會先跟你確認用字；author 規則之前寫的
+journal 帶著 `client unrecorded`，分析時會讀得更保守。第一次清理會比較久：
+之前每個 session 沒消化的候選、沒分析的 journal 行，現在都會在 session 開頭
+一起報出來。另外開一個 session 專門做（「整理偏好」），會比夾在工作中間輕鬆。
 
 </details>
 

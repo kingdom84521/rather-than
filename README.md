@@ -135,23 +135,57 @@ To preview first, run `npx plugins discover kingdom84521/rather-than`. It should
 <details>
 <summary><strong>Updating — and migrating the store</strong></summary>
 
-Run the install command again, then start a session. If your store's layout is older
-than the new version expects, the session context says so in one line and names the
-command to run:
+**Update the plugin.** Run the install command again:
 
 ```bash
-bash <plugin>/skills/rather-than/scripts/init.sh        # plan: what would change; nothing is written
+npx plugins add kingdom84521/rather-than -t claude-code
+```
+
+There is no `npx plugins update`. The CLI treats an unknown word as a repository path
+and prints `No plugins found.`. The new copy lands in
+`~/.claude/plugins/cache/kingdom84521-rather-than/rather-than/<commit>/`. The old
+commit's directory stays next to it; you can delete it.
+
+**Migrate the store.** Start a session. If your store is older than the new version
+expects, the session context says so in one line and gives the full path of the command
+below. Run it yourself, or ask the agent to:
+
+```bash
+bash <plugin>/skills/rather-than/scripts/init.sh        # plan: shows what would change, writes nothing
 bash <plugin>/skills/rather-than/scripts/init.sh --yes  # apply, after a backup under <store>/.state/backups/
 ```
 
-You can run it yourself or ask the agent to. Each change to the store's layout ships as
-a numbered file under `skills/rather-than/migrations/`, written in the commit that made
-the change. `init` only works out which of them your store still needs — from the marker
-at `<store>/.state/schema` — and runs them in order. Running it twice is safe: the second
-run finds nothing to do. It also reports leftovers from an older install route (a skill
-copy under `~/.claude/skills/` while the plugin route is active, hand-registered hooks
-that would fire twice) and removes the safe ones with `--prune`. It never edits
-`settings.json`.
+Every change to the store's layout ships as a numbered file under
+`skills/rather-than/migrations/`, written in the commit that made the change. `init`
+reads the marker at `<store>/.state/schema`, picks the files your store still needs, and
+runs them in order. Running it twice is safe: the second run finds nothing to do.
+
+How to read the plan: `move` means the old file has no counterpart in the new place;
+`merge` means both exist and the old log's missing lines are appended; `park` means both
+exist and the old copy is set aside under `.state/legacy-conflicts/`. The backfill count
+is the number of days the store was in use before the hooks started marking them.
+
+**Coming from the old Claude-only install** (the one you copied into `~/.claude/skills/`
+and `~/.claude/hooks/`, with three entries in `settings.json`): the order matters,
+because the old hooks keep writing state to the old place while they are registered.
+
+1. Close every Claude Code session on the machine.
+2. Run `init.sh --yes`. Migration 001 moves the old usage history out of
+   `~/.claude/skills/rather-than/.state/`.
+3. Remove the three `hooks/rather-than/` entries from `~/.claude/settings.json`. `init`
+   prints a `jq` one-liner for this; it never edits the file itself.
+4. Run `init.sh --yes --prune`. This deletes the old skill copy and, once nothing
+   references them, the old hook files.
+5. Start a session. `/hooks` should list the three hooks under the plugin only, and the
+   `Store schema` line should be gone.
+
+**After migrating, nothing else is yours to do.** The two changes a script cannot make
+are handled by rules instead: old candidate blocks are marked `inferred`, so the next
+question confirms their wording with you; journals from before the author rule carry
+`client unrecorded`, so analysis reads them more carefully. Expect a long first cleanup:
+every unconsumed candidate and every unanalyzed journal line from earlier sessions is
+now reported at session start. A separate session for it ("tidy up preferences") is
+easier than doing it mid-task.
 
 </details>
 
