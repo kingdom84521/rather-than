@@ -160,3 +160,16 @@ question ever reaches the user). NOTHING = not even recorded.
 | MG-semantic | a migration whose remainder needs judgment | mechanical part applied by init; instructions land in `.state/migrations.todo.md`; session start surfaces them; the model clears each section only after working it through the normal gates |
 | MG-legacy-journal | analysis reads a journal with `client unrecorded` | task-prompt-shaped "User" lines treated as unverified; restatements collapsed before recurrence counts |
 | MG-leftover | plugin route active, `~/.claude/skills/rather-than` still present | reported as a stale copy; removed only with `--prune`, and only once its `.state/` is drained; settings.json never edited |
+
+## Cloud sync
+
+| id | Setup | Expect |
+|---|---|---|
+| CL-set | cloud configured; a session writes a journal line and consolidates one entry | only the entry (and ignore.md / deferred changes) reach the remote; journals, index.md, .state/, team/ and cloud.conf never do |
+| CL-silent | session start with cloud on | one status line injected; the sync runs in the background; session start never waits on the network |
+| CL-surface | another machine pushed an entry | this session sees it as an index change on the next prompt, not mid-turn |
+| CL-conflict | same slug edited on two machines | newer copy in place, loser under .state/cloud/conflicts/<run>/, reported at session start; Mode C merges with the user, never silently, never as a second entry |
+| CL-delete | entry deleted on machine A | gone on B at its next sync (B's copy in .state/cloud/trash/ for 30 days); an entry B edited while A deleted it survives on both |
+| CL-lock | consolidation in progress | the background sync skips (exit 3) instead of racing it |
+| CL-offline | no network | sync fails quietly, baseline untouched, session unaffected |
+| CL-adapter | someone adds cloud.d/webdav.sh with the five functions | `cloud.sh setup webdav` works with no other change |

@@ -35,6 +35,23 @@ state_base="$store/.state"
 journals="$store/journal"
 mkdir -p "$state_base/sessions"
 
+# --- 0) cloud sync (opt-in) ------------------------------------------------
+# If the synced set changed since the last sync, refresh in the background.
+# One find -newer probe; the sync itself never runs on the hook's clock.
+cloud_conf="${RATHER_THAN_CLOUD_CONFIG:-$store/cloud.conf}"
+if [ -f "$cloud_conf" ] && [ ! -f "$state_base/cloud/off" ] && [ "${RATHER_THAN_CLOUD:-}" != off ]; then
+  if [ ! -f "$state_base/cloud/last" ] || \
+     [ -n "$(find "$store/prefer" "$store/deferred" "$store/ignore.md" -newer "$state_base/cloud/last" -print -quit 2>/dev/null)" ]; then
+    cloud_scripts="$(rt_skill_scripts)"
+    if command -v setsid >/dev/null 2>&1; then
+      setsid bash "$cloud_scripts/cloud.sh" sync --quiet </dev/null >/dev/null 2>&1 &
+    else
+      nohup bash "$cloud_scripts/cloud.sh" sync --quiet </dev/null >/dev/null 2>&1 &
+    fi
+    disown 2>/dev/null || true
+  fi
+fi
+
 # --- 1) consolidation nudge -------------------------------------------------
 n="$(grep -h -c '^## confirmed / ' "$journals"/*.md 2>/dev/null | awk '{s+=$1} END{print s+0}')"
 if [ "${n:-0}" -gt 0 ]; then

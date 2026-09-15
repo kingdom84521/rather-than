@@ -190,6 +190,59 @@ easier than doing it mid-task.
 </details>
 
 <details>
+<summary><strong>Sync your personal store between machines (optional)</strong></summary>
+
+Your personal preferences can follow you to every machine. Only the knowledge files
+travel — `prefer/`, `deferred/`, `ignore.md`. Journals, indexes, execution state and
+team staging stay where they were made. Storage is pluggable; two adapters ship:
+
+| Adapter | Where it stores | What you need |
+|---|---|---|
+| `s3` | any S3-compatible bucket: Cloudflare R2 (free: 10 GB, no egress fees), AWS S3, Backblaze B2, MinIO | an access key pair; `curl` and `openssl` do the signing, nothing to install |
+| `local` | a directory: an NFS mount, a Dropbox or Drive desktop folder | nothing |
+
+**Cloudflare R2, step by step.** In the dashboard: R2 → Create bucket (`rather-than`,
+location Automatic). Manage R2 API Tokens → Create API token → permission Object Read &
+Write, scoped to that bucket → copy the Access Key ID and Secret Access Key. Overview →
+copy the Account ID. Then write the config file — it lives in the store, which for most
+setups is `~/.claude/rather-than`:
+
+```ini
+# ~/.claude/rather-than/cloud.conf   (chmod 600)
+adapter = s3
+provider = r2
+account_id = <account id>
+bucket = rather-than
+prefix = personal
+access_key_id = <key>
+secret_access_key = <secret>
+```
+
+```bash
+bash <plugin>/skills/rather-than/scripts/cloud.sh status   # access check + a dry-run plan
+bash <plugin>/skills/rather-than/scripts/cloud.sh sync     # first sync
+```
+
+Or let `cloud.sh setup s3` ask for the same values and write the file. Put the same file
+on your other machine; its first sync pulls everything. From then on the hooks sync in the
+background: at session start (pulling what other machines pushed, surfaced as an index
+change on your next prompt) and at the end of a response that changed an entry. Nothing
+waits on the network.
+
+**When two machines edit the same entry**, the newer copy stays in place and the other is
+kept under `.state/cloud/conflicts/`. The next session start says so, and Mode C walks
+you through merging — nothing is overwritten silently, the same rule the journals follow.
+An entry deleted on one machine disappears on the other (its copy sits in
+`.state/cloud/trash/` for 30 days); an entry edited on one machine while the other
+deleted it survives.
+
+`cloud.sh off` pauses the background syncs; `on` resumes; `conflicts` lists kept copies.
+Other providers, and how to write an adapter (five shell functions), are in
+[`skills/rather-than/scripts/cloud.d/README.md`](skills/rather-than/scripts/cloud.d/README.md).
+
+</details>
+
+<details>
 <summary><strong>Skill only — any agent that supports Agent Skills</strong></summary>
 
 The [skills CLI](https://skills.sh) reaches far more agents, but it installs only the
@@ -272,9 +325,9 @@ Three parts.
 
 | Hook | Event | What it does |
 |---|---|---|
-| `session-start.sh` | SessionStart | Creates the store if missing (stamped with the current schema), opens this session's journal with a provenance header, rebuilds the index if stale, marks today as an active day, records the usage baseline, says so when the store's layout is behind the plugin, and injects the index plus every path the session needs |
+| `session-start.sh` | SessionStart | Creates the store if missing (stamped with the current schema), opens this session's journal with a provenance header, rebuilds the index if stale, marks today as an active day, records the usage baseline, says so when the store's layout is behind the plugin, starts a background cloud sync when one is configured, and injects the index plus every path the session needs |
 | `prompt.sh` | UserPromptSubmit | Repeats the one-sentence journal duty, refreshes the session's liveness marker and today's activity marker, and injects index changes — only when another session changed the store since this one last read it |
-| `stop.sh` | Stop | Blocks the stop once (at most once per 30 minutes per session) when confirmed entries are waiting, so consolidation happens at a break point instead of never. Also blocks once when the response edited files but logged no usage events, so the usage ledger gets reconciled at the break point too |
+| `stop.sh` | Stop | Blocks the stop once (at most once per 30 minutes per session) when confirmed entries are waiting, so consolidation happens at a break point instead of never. Also blocks once when the response edited files but logged no usage events, so the usage ledger gets reconciled at the break point too. Starts a background cloud sync when an entry changed |
 
 **The skill** — `SKILL.md` and `references/` hold the judgment: what counts as a
 preference signal, what gets filtered out, how a question must be asked, and how two

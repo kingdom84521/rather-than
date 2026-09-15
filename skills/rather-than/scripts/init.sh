@@ -212,7 +212,9 @@ if [ "$any_pending" = 1 ]; then
   members=("${STORE#/}")
   [ -d "$HOME/.claude/skills/rather-than/.state" ] && members+=("${HOME#/}/.claude/skills/rather-than/.state")
   [ -n "$project" ] && [ -d "$project" ] && members+=("${project#/}")
-  if tar -czf "$bk" -C / --exclude="${STORE#/}/.state/backups" "${members[@]}" 2>/dev/null; then
+  # cloud.conf holds credentials and .state/cloud is rebuildable sync state: neither belongs in a 644 tarball.
+  if tar -czf "$bk" -C / --exclude="${STORE#/}/.state/backups" --exclude="${STORE#/}/.state/cloud" --exclude="${STORE#/}/cloud.conf" "${members[@]}" 2>/dev/null; then
+    chmod 600 "$bk" 2>/dev/null || true
     head_ "backup   $bk"
   else
     head_ "Backup failed ($bk); nothing was changed."; exit 1

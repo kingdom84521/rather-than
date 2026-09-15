@@ -175,6 +175,57 @@ journal 帶著 `client unrecorded`，分析時會讀得更保守。第一次清�
 </details>
 
 <details>
+<summary><strong>把個人 store 同步到別台機器（選用）</strong></summary>
+
+你的個人偏好可以跟著你到每一台機器。只有「知識」會走——`prefer/`、`deferred/`、
+`ignore.md`；journal、索引、執行狀態、team 暫存區都留在原地。後端可以換，
+出廠附兩個 adapter：
+
+| Adapter | 存到哪 | 你需要什麼 |
+|---|---|---|
+| `s3` | 任何 S3 相容的 bucket：Cloudflare R2（免費 10 GB、不收流量費）、AWS S3、Backblaze B2、MinIO | 一組 access key；簽章由 `curl` 和 `openssl` 完成，不用裝東西 |
+| `local` | 一個目錄：NFS 掛載、Dropbox 或 Drive 桌面同步資料夾 | 不用 |
+
+**Cloudflare R2 一步一步來。** 到後台：R2 → Create bucket（名稱 `rather-than`，
+位置 Automatic）。Manage R2 API Tokens → Create API token → 權限選 Object Read &
+Write、範圍只給這個 bucket → 複製 Access Key ID 和 Secret Access Key。Overview →
+複製 Account ID。然後寫設定檔——它放在 store 裡，大多數人的 store 是
+`~/.claude/rather-than`：
+
+```ini
+# ~/.claude/rather-than/cloud.conf   （chmod 600）
+adapter = s3
+provider = r2
+account_id = <account id>
+bucket = rather-than
+prefix = personal
+access_key_id = <key>
+secret_access_key = <secret>
+```
+
+```bash
+bash <plugin>/skills/rather-than/scripts/cloud.sh status   # 檢查連得上，並列出試跑計畫
+bash <plugin>/skills/rather-than/scripts/cloud.sh sync     # 第一次同步
+```
+
+也可以跑 `cloud.sh setup s3`，讓它問你同樣的值再幫你寫檔。另一台機器放同一份檔，
+第一次同步就會把東西全部拉下來。之後 hook 會在背景同步：session 開始時拉別台
+機器推上去的（下一個 prompt 會以索引變動的形式出現），以及某次回應改了條目之後
+推上去。任何一步都不會等網路。
+
+**兩台機器改到同一筆條目時**，比較新的那份留在原位，另一份保存在
+`.state/cloud/conflicts/`。下一次 session 開頭會說，Mode C 會帶你合併——
+不會有任何一份被無聲覆蓋，跟 journal 的規則一樣。在一台機器刪掉的條目，
+另一台也會消失（它的副本在 `.state/cloud/trash/` 留 30 天）；一台在改、
+另一台在刪的條目，保留改過的那份。
+
+`cloud.sh off` 暫停背景同步；`on` 恢復；`conflicts` 列出保存的衝突副本。
+其他供應商、以及怎麼自己寫一個 adapter（五個 shell 函式），見
+[`skills/rather-than/scripts/cloud.d/README.md`](skills/rather-than/scripts/cloud.d/README.md)。
+
+</details>
+
+<details>
 <summary><strong>只裝 skill —— 任何支援 Agent Skills 的 agent</strong></summary>
 
 [skills CLI](https://skills.sh) 支援的 agent 多很多，但它只裝 skill，
@@ -256,9 +307,9 @@ store 和判斷邏輯在任何 agent 上都能用；只有自動化那層需要 
 
 | Hook | 事件 | 做什麼 |
 |---|---|---|
-| `session-start.sh` | SessionStart | store 不存在就建立（並蓋上目前的 schema 版本）、開一份帶來源標頭的 journal、索引過期就重建、把今天標成活躍日、記下 usage 基準線、store 版面落後 plugin 時說一聲，然後注入索引和這場 session 需要的所有路徑 |
+| `session-start.sh` | SessionStart | store 不存在就建立（並蓋上目前的 schema 版本）、開一份帶來源標頭的 journal、索引過期就重建、把今天標成活躍日、記下 usage 基準線、store 版面落後 plugin 時說一聲、有設定雲端同步就在背景啟動一次，然後注入索引和這場 session 需要的所有路徑 |
 | `prompt.sh` | UserPromptSubmit | 每回合重述那一句記錄義務、更新 session 存活標記和當天的活躍標記；只有別的 session 改過 store 時，才注入變動的索引行 |
-| `stop.sh` | Stop | 有已確認的條目在等整併時，攔下這次結束一次（每 session 每 30 分鐘最多一次），讓整併在段落發生，而不是永遠不發生。同樣地，這次回應改了檔案卻一筆 usage 都沒記時，也攔一次，讓帳在段落被補上 |
+| `stop.sh` | Stop | 有已確認的條目在等整併時，攔下這次結束一次（每 session 每 30 分鐘最多一次），讓整併在段落發生，而不是永遠不發生。同樣地，這次回應改了檔案卻一筆 usage 都沒記時，也攔一次，讓帳在段落被補上。條目有變動時在背景啟動一次雲端同步 |
 
 **Skill** —— `SKILL.md` 和 `references/`，裝著所有判斷：什麼算偏好訊號、
 什麼該濾掉、問題要怎麼問、兩筆條目怎麼合併。

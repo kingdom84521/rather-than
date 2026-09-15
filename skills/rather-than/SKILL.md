@@ -50,6 +50,14 @@ Each root contains:
   session's repo and team staging root — that header, not the file's
   location, is how consolidation routes team-scope blocks.
 - `ignore.md` — topics the user has opted out of.
+- `cloud.conf` — **personal root only, optional.** Where the knowledge files
+  (`prefer/`, `deferred/`, `ignore.md`) sync to, through an adapter in
+  `scripts/cloud.d/` (S3-compatible buckets and plain directories ship;
+  others are one file away). The hooks run `scripts/cloud.sh sync` in the
+  background; journals, indexes, `.state/` and team staging never sync. An
+  entry edited on two machines keeps the newer copy in place and the loser
+  under `.state/cloud/conflicts/`, reported at session start — Mode C merges
+  them with the user; nothing is resolved silently.
 
 Execution state — hook bookkeeping, per-root usage logs, the consolidation lock —
 lives in one place outside the roots, at `<store>/.state/`, so an
@@ -188,7 +196,8 @@ evidence, and a high overridden ratio is counter-evidence.
   work `migrations.todo.md` first; every other mode waits
 - Injected context reports journal entries pending consolidation, or the
   user asks to tidy up preferences → **Mode B**
-- User wants to view, edit, or delete entries → **Mode C**
+- User wants to view, edit, or delete entries, or the injected context
+  reports cloud conflict copies → **Mode C**
 - User explicitly commands distillation/promotion ("promote", "distill",
   "整理成規則") → **Mode D** (`references/PROMOTE.md`)
 - User explicitly commands a history bootstrap ("bootstrap", "挖歷史") →
@@ -487,6 +496,16 @@ source copy). Publishing outside B7 happens only when the user asks.
 **Edit** → edit the file directly. This is the one case where writing to
 `prefer/` outside consolidation is allowed. Rebuild the index if `topic`,
 `confidence`, or the except count changed.
+
+**Cloud conflicts** (injected context reports copies under
+`.state/cloud/conflicts/`; `scripts/cloud.sh conflicts` lists them) → each
+copy is the losing side of the same entry edited on two machines; the
+winner is already in `prefer/`. For each: show the user what the copy has
+that the live file lacks — Reason wording, Except clauses, Evidence lines —
+and take the parts the user wants through the review gate into the live
+file, then delete the copy and rebuild the index. Never merge silently, and
+never keep the copy as a second entry; the next background sync pushes the
+merged file.
 
 ---
 

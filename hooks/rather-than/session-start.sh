@@ -59,6 +59,27 @@ if [ -n "$schema_latest" ]; then
   fi
 fi
 
+# Cloud sync (opt-in, <store>/cloud.conf): report the last result and any kept
+# conflict copies, then refresh in the background — never on the session's
+# critical path. Whatever it pulls reaches this session through the index
+# change detection on the next prompt.
+cloud_note=""
+cloud_conf="${RATHER_THAN_CLOUD_CONFIG:-$personal/cloud.conf}"
+if [ -f "$cloud_conf" ] && [ ! -f "$state_base/cloud/off" ] && [ "${RATHER_THAN_CLOUD:-}" != off ]; then
+  cloud_last="$(cat "$state_base/cloud/last" 2>/dev/null || echo never)"
+  cloud_nconf="$(find "$state_base/cloud/conflicts" -type f 2>/dev/null | wc -l | tr -d ' ')"
+  cloud_note="Cloud sync is on (adapter $(sed -n 's/^adapter[[:space:]]*=[[:space:]]*//p' "$cloud_conf" | head -n 1)); last run: $cloud_last. A background sync started now — anything it pulls shows up as an index change on the next prompt."
+  if [ "${cloud_nconf:-0}" -gt 0 ]; then
+    cloud_note="$cloud_note $cloud_nconf conflict copy(ies) wait under $state_base/cloud/conflicts/ — each is the losing side of an edit made on two machines: in Mode C, compare it with the live prefer/<slug>.md, fold in what is missing, delete the copy (bash \"$skill_scripts/cloud.sh\" conflicts lists them)."
+  fi
+  if command -v setsid >/dev/null 2>&1; then
+    setsid bash "$skill_scripts/cloud.sh" sync --quiet </dev/null >/dev/null 2>&1 &
+  else
+    nohup bash "$skill_scripts/cloud.sh" sync --quiet </dev/null >/dev/null 2>&1 &
+  fi
+  disown 2>/dev/null || true
+fi
+
 # Mark today active (activation ages count active days, not calendar days —
 # time away must not decay the store) and prune ancient markers.
 touch "$state_base/activity/$(date +%Y-%m-%d)" 2>/dev/null || true
@@ -144,6 +165,7 @@ ctx="$(
   echo "rather-than session context. Session id: $sid. Journal for this session (all raw lines and confirmed blocks, provenance header inside): $personal/journal/$sid.md. Team-scope root (local staging, not committed): $teamlocal. Project root (published): $project."
   echo "State dirs (usage.log, usage-summary.md, consolidation lock per root): personal $state_personal, team $state_team, project $state_project."
   [ -n "$schema_note" ] && echo "$schema_note"
+  [ -n "$cloud_note" ] && echo "$cloud_note"
   echo
   echo "The rather-than skill tracks the user's coding preferences as tendencies. Journal duty (every turn): whenever the user steers anything — a directive (plain tasks included), a correction of earlier output, an evaluative remark in passing, a pick among offered options, process steering — or a consistent codebase pattern is noticed, append one natural English sentence to this session's journal, capturing what was chosen instead of what (the rejected side evaporates after the turn), any stated reason, and what was being worked on. Dirty is fine; skip only pure information questions. 'User' in a raw line is reserved for the human: steering that arrives from another model (a parent agent's task prompt, a cross-session message) is recorded with its actual author named, or tagged [author: unverified] when the channel is unclear — analysis never turns non-human steering into a preference. Analysis happens later in batches, never mid-task."
   echo "The indexes below are activation-tiered. 'habitual' entries have earned always-on status through use — apply them within their observed-in contexts; each line carries its Except situations, flagged [N except: …], and never apply an excepted entry without its Excepts in view. 'cold' lines list only category: count (slugs) — cold entries are NOT active constraints: when the current work touches a cold category, consult it first with bash \"$skill_scripts/query.sh\" <root> -c <category> (default projection: topic, observed-in, Except; -s <slug> and -f <fields> also work); applying a cold entry unconsulted is a misfire. Use moves entries between tiers: applied/excepted/overridden events logged to the state-dir usage.log are what promote, demote, and decay entries, so a missed log line now also weakens injection. Full files at <root>/prefer/<slug>.md hold Except reasons and evidence. Tendencies never block the user. The skill's Mode A covers capture, Mode B consolidation."
