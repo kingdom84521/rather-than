@@ -485,13 +485,13 @@ that knows who was speaking or how much was already written.
   *Partially fixed at `d05757b` (client identity in the provenance header makes it
   measurable; one-event-one-line dedup), but not verified yet — and there is still no
   counter or rate limit.*
-- **The Stop hook forced consolidation at the wrong moments.** Until `<fix-hash>`, the
+- **The Stop hook forced consolidation at the wrong moments.** Until `d630413`, the
   Stop hook blocked the end of a response whenever any journal held confirmed blocks and
   told the model to run Mode B "at this natural break point". A response ending is not a
   task boundary: the block fired while the user was mid-investigation in an unrelated
   session, pulled them into review questions, and came back once per session until the
   backlog was drained. The break point the design meant was the user's own completion
-  signal ("這樣就好"), which a hook cannot see. *Fixed at `<fix-hash>`: Mode B runs only
+  signal ("這樣就好"), which a hook cannot see. *Fixed at `d630413`: Mode B runs only
   on your command, and session start shows the backlog as a visible line instead — not
   yet verified in daily use.*
 - **The Codex side is verified against the documented contract, not against a live
