@@ -194,8 +194,9 @@ evidence, and a high overridden ratio is counter-evidence.
 - Injected context reports the store schema behind the plugin, or semantic
   migration steps waiting → run `scripts/init.sh` (plan, then `--yes`) and
   work `migrations.todo.md` first; every other mode waits
-- Injected context reports journal entries pending consolidation, or the
-  user asks to tidy up preferences → **Mode B**
+- User explicitly asks to consolidate ("consolidate", "整理偏好", "tidy up
+  preferences") → **Mode B**. The injected pending-consolidation report is
+  information only: never start Mode B on your own, whatever the backlog
 - User wants to view, edit, or delete entries, or the injected context
   reports cloud conflict copies → **Mode C**
 - User explicitly commands distillation/promotion ("promote", "distill",
@@ -277,9 +278,10 @@ Recording never interrupts the task and is never mentioned to the user.
 
 ### A2. Analyze (batch, full judgment)
 
-Trigger at whichever comes first: a break-point signal (commit, "這樣就
-好", task switch); ≥8 unanalyzed raw lines; session start reports dead
-sessions' unanalyzed journals. Never mid-task.
+Trigger, for THIS session's raw lines, at whichever comes first: a
+break-point signal from the user (commit, "這樣就好", task switch); ≥8
+unanalyzed raw lines. Never mid-task. Dead sessions' raw lines are adopted
+only inside Mode B, which runs on the user's command.
 
 Read the raw lines since the last analysis marker and apply the analysis
 lens in `references/DETECTION.md`: the S1–S8 signal taxonomy, the hard
@@ -397,8 +399,11 @@ Do not wait for consolidation.
 
 ## Mode B — consolidate
 
-Triggered when the injected context reports confirmed or orphaned journal
-entries, or on request. Full rules in `references/MERGE.md`.
+**Runs ONLY on an explicit user command** — "consolidate", "整理偏好", "tidy
+up preferences" — like Modes D and E. The injected context reports what is
+waiting so the user can pick the moment; a backlog, however large, is not a
+trigger, and neither is a response ending. Full rules in
+`references/MERGE.md`.
 
 ### B1. Lock
 

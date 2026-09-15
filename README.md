@@ -248,7 +248,7 @@ Other providers, and how to write an adapter (five shell functions), are in
 The [skills CLI](https://skills.sh) reaches far more agents, but it installs only the
 skill — it cannot install hooks. Without the hooks, rather-than does nothing: the hooks
 create the store, open each session's journal, inject the index every turn, and pause at
-break points for consolidation. So on this route, you place the hooks yourself:
+break points to reconcile the usage ledger. So on this route, you place the hooks yourself:
 
 ```bash
 npx skills add kingdom84521/rather-than -g
@@ -327,7 +327,7 @@ Three parts.
 |---|---|---|
 | `session-start.sh` | SessionStart | Creates the store if missing (stamped with the current schema), opens this session's journal with a provenance header, rebuilds the index if stale, marks today as an active day, records the usage baseline, says so when the store's layout is behind the plugin, starts a background cloud sync when one is configured, and injects the index plus every path the session needs |
 | `prompt.sh` | UserPromptSubmit | Repeats the one-sentence journal duty, refreshes the session's liveness marker and today's activity marker, and injects index changes — only when another session changed the store since this one last read it |
-| `stop.sh` | Stop | Blocks the stop once (at most once per 30 minutes per session) when confirmed entries are waiting, so consolidation happens at a break point instead of never. Also blocks once when the response edited files but logged no usage events, so the usage ledger gets reconciled at the break point too. Starts a background cloud sync when an entry changed |
+| `stop.sh` | Stop | Blocks the stop once (at most once per 30 minutes per session) when the response edited files but logged no usage events, so the usage ledger gets reconciled at the break point. Starts a background cloud sync when an entry changed. It never starts consolidation |
 
 **The skill** — `SKILL.md` and `references/` hold the judgment: what counts as a
 preference signal, what gets filtered out, how a question must be asked, and how two
@@ -381,9 +381,11 @@ is lost forever, while a wrong analysis can be redone.
    carries its date, what you said, what the alternative was, and what you were working
    on. A question without receipts is not ready to be asked.
 
-4. **Consolidate.** Confirmed blocks merge into `prefer/` one at a time, behind the review
-   gate. Conflicting entries go to an adversarial debate instead of being silently
-   overwritten.
+4. **Consolidate — only when you ask.** Say `consolidate` or `整理偏好`. Confirmed blocks
+   merge into `prefer/` one at a time, behind the review gate; lines and candidates left by
+   sessions that ended are adopted in the same pass. Conflicting entries go to an
+   adversarial debate instead of being silently overwritten. Session start shows you what
+   is waiting; nothing runs until you say so.
 
 Applying a confirmed preference to the code at hand happens immediately. It never waits
 for this bookkeeping.
@@ -429,13 +431,13 @@ cannot find its other end.
 | Mode | Trigger | What it does |
 |---|---|---|
 | A — capture | automatic | Record, analyze, ask, apply |
-| B — consolidate | pending entries, or on request | Merge into `prefer/` behind the review gate |
+| B — consolidate | explicit command only | Merge into `prefer/` behind the review gate; adopt what ended sessions left behind |
 | C — view & maintain | on request | List, read, edit, delete, publish/unpublish, or score the store for stale and low-quality entries |
 | D — promote | explicit command only | Distill a cluster of tendencies into one principle and run it through the five gates. What passes becomes a lint or tsconfig change where a machine can enforce it, otherwise a rule in your instruction file — and the source entries are deleted |
 | E — bootstrap | explicit command only | Seed an empty store from history: merge-request review discussions (`glab` / `gh`) and your own correction-shaped commits, queued as ordinary candidates that still need your confirmation |
 
-Modes D and E never start on the model's own judgment. Their reference files are not even
-read into context until you give the command.
+Modes B, D and E never start on the model's own judgment. D and E's reference files are
+not even read into context until you give the command.
 
 ## Known limitations
 
@@ -483,6 +485,15 @@ that knows who was speaking or how much was already written.
   *Partially fixed at `d05757b` (client identity in the provenance header makes it
   measurable; one-event-one-line dedup), but not verified yet — and there is still no
   counter or rate limit.*
+- **The Stop hook forced consolidation at the wrong moments.** Until `<fix-hash>`, the
+  Stop hook blocked the end of a response whenever any journal held confirmed blocks and
+  told the model to run Mode B "at this natural break point". A response ending is not a
+  task boundary: the block fired while the user was mid-investigation in an unrelated
+  session, pulled them into review questions, and came back once per session until the
+  backlog was drained. The break point the design meant was the user's own completion
+  signal ("這樣就好"), which a hook cannot see. *Fixed at `<fix-hash>`: Mode B runs only
+  on your command, and session start shows the backlog as a visible line instead — not
+  yet verified in daily use.*
 - **The Codex side is verified against the documented contract, not against a live
   Codex.** Its documented hook events, stdin fields and output schema match Claude Code's,
   and the hooks were tested end to end against that contract. Before trusting it, run

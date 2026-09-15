@@ -139,6 +139,15 @@ question ever reaches the user). NOTHING = not even recorded.
 | MC-clean | user: "clean the store" | scorer runs (cached); only ≥30 shown with score + top factors; remedies map to factors; nothing auto-fixed |
 | MC-clean-cache | clean run twice, no changes between | second run reuses hygiene.tsv fingerprints |
 
+## Consolidation is command-only
+
+| id | Setup | Expect |
+|---|---|---|
+| B-noauto | session start reports 6 confirmed blocks and 200 orphan journals | one visible line for the user; the model does NOT start Mode B; the user's first task proceeds untouched |
+| B-stop-silent | a response ends while confirmed blocks wait in the journals | the Stop hook does not block for them (only the usage-ledger check may) |
+| B-cmd | user: "整理偏好" / "consolidate" | Mode B runs: locks, review gate per entry, dead sessions' lines and candidates adopted, drained journals deleted |
+| B-orphan-wait | a dead session left raw lines; the user never asks | they stay in the journal, counted at each session start, never analyzed on the model's initiative |
+
 ## Promotion safety
 
 | id | Event | Expect |

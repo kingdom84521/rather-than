@@ -1,14 +1,16 @@
 #!/usr/bin/env bash
-# Stop hook for rather-than: at each response end, at most ONE block, for the
-# first of two reasons that applies (both rate-limited per session):
-# 1) consolidation — confirmed blocks are waiting, so run Mode B at this
-#    natural break point instead of never;
-# 2) usage reconciliation — this response edited files, habitual-tier entries
-#    exist, and not one usage event was logged, so the tier bookkeeping (which
-#    the model reliably forgets mid-task) happens now, at the break point.
-#    The hook cannot judge WHICH tendencies applied — it can only detect the
-#    shape of the absence and force the moment the model decides.
-# Session start remains the crash safety net.
+# Stop hook for rather-than: at each response end, at most ONE block, and only
+# for the usage ledger — this response edited files, habitual-tier entries
+# exist, and not one usage event was logged, so the tier bookkeeping (which
+# the model reliably forgets mid-task) happens now, at the break point. The
+# hook cannot judge WHICH tendencies applied — it can only detect the shape of
+# the absence and force the moment the model decides.
+#
+# Consolidation (Mode B) is never forced from here. It runs only when the user
+# asks. A response ending is not a task boundary: this hook cannot tell the
+# two apart, and a "run Mode B now" at the wrong moment drags the user into
+# review questions in the middle of unrelated work. Session start reports the
+# backlog, visibly, and the user picks the moment.
 set -uo pipefail
 
 input="$(cat)"
@@ -32,10 +34,9 @@ sid="$(get_field session_id)"; [ -n "$sid" ] || sid="unknown-$$"
 cwd="$(get_field cwd)"; [ -n "$cwd" ] || cwd="$PWD"
 store="$(rt_store_root)"
 state_base="$store/.state"
-journals="$store/journal"
 mkdir -p "$state_base/sessions"
 
-# --- 0) cloud sync (opt-in) ------------------------------------------------
+# --- cloud sync (opt-in) -----------------------------------------------------
 # If the synced set changed since the last sync, refresh in the background.
 # One find -newer probe; the sync itself never runs on the hook's clock.
 cloud_conf="${RATHER_THAN_CLOUD_CONFIG:-$store/cloud.conf}"
@@ -52,19 +53,7 @@ if [ -f "$cloud_conf" ] && [ ! -f "$state_base/cloud/off" ] && [ "${RATHER_THAN_
   fi
 fi
 
-# --- 1) consolidation nudge -------------------------------------------------
-n="$(grep -h -c '^## confirmed / ' "$journals"/*.md 2>/dev/null | awk '{s+=$1} END{print s+0}')"
-if [ "${n:-0}" -gt 0 ]; then
-  nudge="$state_base/sessions/$sid.nudge"
-  if [ ! -f "$nudge" ] || [ -n "$(find "$nudge" -mmin +30 -print -quit 2>/dev/null)" ]; then
-    touch "$nudge"
-    reason="rather-than: $n confirmed preference block(s) await consolidation and this response just ended at a natural break point. Run Mode B now: read the journals under $journals, take the per-root consolidation locks, apply the confirmed blocks to their prefer/ stores (route team-scope blocks by each journal's provenance header), rebuild indexes, delete the processed journals, release the locks. Then finish."
-    printf '{"decision": "block", "reason": "%s"}\n' "$reason"
-    exit 0
-  fi
-fi
-
-# --- 2) usage reconciliation nudge ------------------------------------------
+# --- usage reconciliation nudge -----------------------------------------------
 # Resolve this session's roots the same way the other hooks do.
 repo_root="$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null || true)"
 [ -n "$repo_root" ] || repo_root="$cwd"

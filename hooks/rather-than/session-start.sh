@@ -116,9 +116,9 @@ rebuild_if_stale() {
   fi
 }
 
-journal_report() {
-  local root="$1" label="$2"
-  [ -d "$root/journal" ] || return 0
+journal_counts() { # <root> → "confirmed candidates orphaned-raw-lines"
+  local root="$1"
+  [ -d "$root/journal" ] || { echo "0 0 0"; return 0; }
   local confirmed=0 orphaned=0 cands=0 f jsid alive
   for f in "$root/journal"/*.md; do
     [ -e "$f" ] || continue
@@ -136,9 +136,7 @@ journal_report() {
       orphaned=$((orphaned + p))
     fi
   done
-  if [ "$confirmed" -gt 0 ] || [ "$orphaned" -gt 0 ] || [ "$cands" -gt 0 ]; then
-    echo "- $label scope: $confirmed confirmed block(s), $cands unconsumed candidate(s), and $orphaned unanalyzed raw line(s) from dead sessions. Consolidation (Mode B), candidate elicitation (A3), and analysis (A2) are due before substantive work begins; the journals' provenance headers say where team-scope blocks belong."
-  fi
+  echo "$confirmed $cands $orphaned"
 }
 
 emit_index() {
@@ -161,6 +159,15 @@ rebuild_if_stale "$personal" "$state_personal"
 rebuild_if_stale "$teamlocal" "$state_team"
 [ -d "$project" ] && rebuild_if_stale "$project" "$state_project"
 
+# Backlog report. Mode B is command-only: the model gets the numbers as
+# information, the user gets them as a visible line and picks the moment.
+read -r jr_confirmed jr_cands jr_orphaned <<< "$(journal_counts "$personal")"
+pending_note=""; pending_msg=""
+if [ "${jr_confirmed:-0}" -gt 0 ] || [ "${jr_cands:-0}" -gt 0 ] || [ "${jr_orphaned:-0}" -gt 0 ]; then
+  pending_note="- personal scope: $jr_confirmed confirmed block(s), $jr_cands unconsumed candidate(s), and $jr_orphaned unanalyzed raw line(s) from dead sessions are waiting in the journals. Mode B — consolidation, which also adopts dead sessions' candidates and raw lines — runs ONLY when the user asks for it ('consolidate', '整理偏好', 'tidy up preferences'). Do not start it on your own, whatever the backlog; the user has been shown these numbers. The journals' provenance headers say where team-scope blocks belong."
+  pending_msg="rather-than: $jr_confirmed confirmed, $jr_cands candidate(s), $jr_orphaned raw line(s) from earlier sessions await consolidation — say 整理偏好 (consolidate) when you want it done."
+fi
+
 ctx="$(
   echo "rather-than session context. Session id: $sid. Journal for this session (all raw lines and confirmed blocks, provenance header inside): $personal/journal/$sid.md. Team-scope root (local staging, not committed): $teamlocal. Project root (published): $project."
   echo "State dirs (usage.log, usage-summary.md, consolidation lock per root): personal $state_personal, team $state_team, project $state_project."
@@ -173,13 +180,10 @@ ctx="$(
   emit_index "$personal" "Personal"
   emit_index "$teamlocal" "Team (local staging, not committed)"
   [ -d "$project" ] && emit_index "$project" "Project (published, committed)"
-  report_p="$(journal_report "$personal" "personal")"
-  report_t=""
-  if [ -n "$report_p$report_t" ]; then
+  if [ -n "$pending_note" ]; then
     echo
-    echo "### Pending consolidation"
-    [ -n "$report_p" ] && echo "$report_p"
-    [ -n "$report_t" ] && echo "$report_t"
+    echo "### Pending consolidation (on request only)"
+    echo "$pending_note"
   fi
 )"
 
@@ -189,8 +193,8 @@ printf '%s' "$idx_hash" > "$state_base/sessions/$sid.hash" 2>/dev/null || true
 cat "$personal/index.md" "$teamlocal/index.md" "$project/index.md" 2>/dev/null > "$state_base/sessions/$sid.index" || true
 
 if command -v jq >/dev/null 2>&1; then
-  jq -nc --arg ctx "$ctx" \
-    '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $ctx}}'
+  jq -nc --arg ctx "$ctx" --arg msg "$pending_msg" \
+    '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $ctx}} + (if $msg != "" then {systemMessage: $msg} else {} end)'
 else
   echo "$ctx"
 fi
